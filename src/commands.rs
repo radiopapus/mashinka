@@ -6,12 +6,8 @@ pub const INDEX_COMMAND_NAME: &str = "index";
 pub const PUBLISH_COMMAND_NAME: &str = "publish";
 pub const HELP_COMMAND_NAME: &str = "help";
 
-pub struct Command;
-
-impl Command {
-    pub fn available_commands() -> [&'static str; 3] {
-        [INDEX_COMMAND_NAME, PUBLISH_COMMAND_NAME, HELP_COMMAND_NAME]
-    }
+pub fn available_commands() -> [&'static str; 3] {
+    [INDEX_COMMAND_NAME, PUBLISH_COMMAND_NAME, HELP_COMMAND_NAME]
 }
 
 pub trait Run {

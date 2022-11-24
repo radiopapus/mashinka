@@ -14,13 +14,22 @@
 ## Планы
 Не просто переписать скрипты, но и добавить новые фишки, вроде команды deploy, которая выгрузит
 записи в облачное хранилище.
-Хочу попробовать github actions и настроить pipeline.
-Хочу обернуть приложение в docker
-Хочу использовать github issues в качестве менеджера задач.
+
+Переписать команду Publish.
+
+Переписать команду Index.
+
+Попробовать github actions и настроить pipeline.
+
+Обернуть приложение в docker.
+
+Использовать github issues в качестве менеджера задач.
 
 ## Полезные ссылки
 https://github.com/radiopapus/mashinka
+
 https://doc.rust-lang.org/book/
+
 http://prog.tversu.ru/library/tapl.pdf
 
 ## Почему Rust, почему не {язык программирования}, почему ubuntu  и т.д.
