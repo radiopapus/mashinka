@@ -26,11 +26,9 @@
 Использовать github issues в качестве менеджера задач.
 
 ## Полезные ссылки
-https://github.com/radiopapus/mashinka
+[Дока по Rust](https://doc.rust-lang.org/book/)
 
-https://doc.rust-lang.org/book/
-
-http://prog.tversu.ru/library/tapl.pdf
+[Типы в языках программирования](http://prog.tversu.ru/library/tapl.pdf)
 
 ## Почему Rust, почему не {язык программирования}, почему ubuntu  и т.д.
 А почему бы и нет?
