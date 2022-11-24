@@ -24,7 +24,7 @@ pub fn run<'a>(raw_command: &'a str, params: &'a [String]) -> Result<CommandResu
 #[cfg(test)]
 mod tests {
     use crate::{run, CommandResult};
-    use crate::commands::Command;
+    use crate::commands::{available_commands, Command};
     use crate::commands::unknown::UNKNOWN_MESSAGE_ERROR;
 
     #[test]
@@ -41,7 +41,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn test_run_unknown_command() {
-        let available_commands = Command::available_commands().join(",");
+        let available_commands = available_commands().join(",");
         let resolved_error_message = UNKNOWN_MESSAGE_ERROR.replace("{commands}", available_commands.as_str());
 
         run("unknown", &[])
