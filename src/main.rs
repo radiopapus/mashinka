@@ -1,13 +1,25 @@
-use std::{env, fs};
-use mashinka::commands::{CommandResult, HELP_COMMAND_NAME};
+mod commands;
 
-use mashinka::run;
 
-fn main() -> Result<CommandResult, String> {
-    let args: Vec<String> = env::args().collect();
-    return match args.len() {
-        1 => run(HELP_COMMAND_NAME, &[]),
-        2 => run(&args[1], &[]),
-        _ => run(&args[1], &args[2..args.len()]),
+use std::{env, process};
+use std::env::Args;
+use crate::commands::{HELP_COMMAND_NAME, run, run_with_params};
+
+fn main() {
+    let mut args: Args = env::args().into_iter();
+
+    let command = match args.next() {
+        Some(v) => v,
+        None => HELP_COMMAND_NAME.to_string(),
     };
+
+    let result = match args.len() {
+        1 | 2 => run(command.as_str()),
+        _ => run_with_params(command.as_str(), args.into_iter().skip(2)),
+    };
+
+    if let Err(e) = result {
+        eprintln!("Mashinka error: {e}");
+        process::exit(1);
+    }
 }
