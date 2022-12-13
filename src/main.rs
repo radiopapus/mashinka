@@ -1,4 +1,5 @@
 mod commands;
+mod grow;
 
 
 use std::{env, process};
