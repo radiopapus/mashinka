@@ -7,7 +7,7 @@ use crate::grow::post::Post;
 /// Структура для черновика записи. В дальнейшем черновик может быть опубликован (превращен в Post)
 #[derive(Debug, PartialEq, Eq)]
 pub struct DraftPost {
-    /// Заголовок на языке текста lang.
+    /// Заголовок на языке текста.
     title: String,
     /// Описание записи
     description: String,
@@ -53,7 +53,7 @@ impl DraftPost {
         self
     }
 
-    /// Задает, очищает от пробелов и проверяет корректность ключевые слова записи.
+    /// Задает, очищает от пробелов и проверяет корректность ключевых слов записи.
     pub fn keywords(&mut self, keywords: Vec<String>) -> &mut DraftPost {
 
         assert!(!keywords.is_empty(), "keywords should not be empty");
@@ -65,6 +65,7 @@ impl DraftPost {
         self
     }
 
+    /// Аналогично keywords, но в качестве параметров можно передать строку и указать разделитель.
     pub fn keywords_as_str(&mut self, keywords: &str, delimiter: char) -> &mut DraftPost {
         let keywords: Vec<String> = keywords.split(delimiter)
             .map(ToString::to_string)
@@ -90,8 +91,8 @@ impl DraftPost {
 
     /// Преобразует DraftPost в Post.
     pub fn to_post(&self) -> Post {
-        // The returned "slug" will consist of a-z, 0-9, and '-'. Furthermore, a slug will
-        // never contain more than one '-' in a row and will never start or end with '-'.
+        // Результат "slug" состоит из символов a-z, 0-9 и '-'.
+        // Никогда не содержит более одного '-' и не начинается с '-'.
         // see slugify implementation for details.
         let slug = slugify(&self.title);
 
