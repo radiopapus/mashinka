@@ -1,6 +1,6 @@
 use chrono::Utc;
 use slug::slugify;
-use crate::grow::{KEY_VALUE_DELIMITER, KEYWORDS_DELIMITER, LF, MAX_CHARS_IN_DESCRIPTION, MAX_CHARS_IN_TITLE, META_DELIMITER};
+use crate::grow::{DEFAULT_AUTHOR, KEY_VALUE_DELIMITER, KEYWORDS_DELIMITER, LF, MAX_CHARS_IN_DESCRIPTION, MAX_CHARS_IN_TITLE, META_DELIMITER};
 use crate::grow::lang::Lang;
 use crate::grow::post::Post;
 
@@ -97,7 +97,7 @@ impl DraftPost {
 
         Post {
             title: slug.to_owned(),
-            author: "Андрей Добсон".to_string(), // todo заменить на корректное
+            author: DEFAULT_AUTHOR.to_string(),
             published_date_time: Utc::now(),
             slug: slug.to_owned(),
             description: self.description.to_string(),
@@ -148,25 +148,8 @@ mod tests {
     use chrono::Utc;
     use crate::grow::draft_post::DraftPost;
     use crate::grow::lang::Lang;
-    use crate::grow::{ISO8601_DATE_FORMAT, ISO8601_DATE_TIME_FORMAT, KEY_VALUE_DELIMITER, KEYWORDS_DELIMITER, lang, MAX_CHARS_IN_DESCRIPTION, MAX_CHARS_IN_TITLE};
+    use crate::grow::{ISO8601_DATE_FORMAT, KEYWORDS_DELIMITER, MAX_CHARS_IN_DESCRIPTION, MAX_CHARS_IN_TITLE, DEFAULT_AUTHOR, TEST_CONTENT, TEST_DESCRIPTION, TEST_DRAFT_TITLE, TEST_KEYWORDS_AS_STRING, TEST_LANG_AS_STRING, TEST_POST_TITLE, TEST_SLUG};
 
-
-    const TEST_DRAFT_TITLE: &str = "Перевод - Почему бумага формата А4 имеет размер 297 мм на 210 мм?";
-
-    const TEST_DESCRIPTION: &str = "Тестовое описание для записи";
-    const TEST_SLUG: &str = "perevod-pochemu-bumaga-formata-a4-imeet-razmer-297-mm-na-210-mm";
-
-    // Заголовок записи это идентификатор для переводчика, он не равен TEST_DRAFT_TITLE, но равен slug
-    const TEST_POST_TITLE: &str = TEST_SLUG;
-
-    const TEST_AUTHOR: &str = "Андрей Добсон";
-    const TEST_KEYWORDS_AS_STRING: &str = "бумага,А4,297 мм";
-    const TEST_LANG_AS_STRING: &str = "ru";
-    const TEST_CONTENT: &str = "_Вкратце: размер листа А0 равен 1 189 мм на 841 мм (1 м<sup>2</sup>). Площадь 1 м<sup>2</sup>
-скорее всего выбрана из-за удобства измерения и расчетов. Сотношение сторон примерно равно sqrt2 (1.41) и
-выбрано не случайно. Это дает возможность получать листы меньшего размера, сохраняя соотношение сторон.
-Таким образом, <i>чтобы получить из листа формата</i> А0 лист формата А4 нужно свернуть лист 4 раза.
- Вот и получается 1 189 / 4 = 297.25, что примерно равно 297 мм._";
 
     #[derive(Default)]
     struct TestDraftPost {
@@ -244,7 +227,7 @@ keywords: {keywords_as_string}
         assert_eq!(TEST_DESCRIPTION, post.description);
         assert_eq!(Lang::Ru, post.lang);
         assert_eq!(TEST_LANG_AS_STRING, post.lang.to_str());
-        assert_eq!(TEST_AUTHOR, post.author);
+        assert_eq!(DEFAULT_AUTHOR, post.author);
         assert_eq!(TEST_POST_TITLE, post.title);
 
         let expected_formatted_date_time = Utc::now()

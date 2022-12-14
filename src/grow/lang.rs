@@ -15,15 +15,15 @@ impl Display for Lang {
 impl Lang {
     pub fn to_str(self) -> &'static str {
         match self {
-            Lang::Ru => "ru",
-            Lang::En => "en"
+            Lang::Ru => "Ru",
+            Lang::En => "En"
         }
     }
 
     pub fn from_str(value: &str) -> Lang {
         match value.trim().to_lowercase().as_str() {
-            "ru" => Lang::Ru,
-            "en" => Lang::En,
+            "Ru" => Lang::Ru,
+            "En" => Lang::En,
             _ => panic!("Unknown language")
         }
     }
