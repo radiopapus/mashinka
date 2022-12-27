@@ -1,29 +1,32 @@
 mod commands;
+mod config;
 mod grow;
 
-
-use std::{env, process};
 use std::env::Args;
+use std::{env, process};
+
+use crate::commands::run;
+
 use dotenv::dotenv;
-use crate::commands::{HELP_COMMAND_NAME, run, run_with_params};
 
 fn main() {
-    dotenv().ok();
+    if let Err(_) = dotenv() {
+        eprintln!("Check file .env exists. See .env-example for details.");
+        process::exit(1);
+    }
 
     let mut args: Args = env::args().into_iter();
+    args.next(); // пропускаем первый параметр, так как это target path
 
-    let command = match args.next() {
-        Some(v) => v,
-        None => HELP_COMMAND_NAME.to_string(),
-    };
+    let result = run(args);
 
-    let result = match args.len() {
-        1 | 2 => run(command.as_str()),
-        _ => run_with_params(command.as_str(), args.into_iter().skip(2)),
-    };
-
-    if let Err(e) = result {
-        eprintln!("Mashinka error: {e}");
-        process::exit(1);
+    match result {
+        Err(e) => {
+            eprintln!("Mashinka error: {e}");
+            process::exit(1);
+        }
+        Ok(result) => {
+            println!("{}", result.summarize());
+        }
     }
 }

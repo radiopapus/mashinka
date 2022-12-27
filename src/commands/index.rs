@@ -1,16 +1,14 @@
-use crate::commands::{CommandResult, Run};
+use crate::commands::{CommandResult, MashinkaCommand, INDEX_COMMAND_NAME};
+use std::error::Error;
 
 pub struct IndexCommand;
 
-/// Implementation for the index command.
-/// Gets content and build index to use it for search.
-impl Run for IndexCommand {
-    fn run(&self, params: impl Iterator<Item = String>) -> Result<CommandResult, String> {
-        Ok(
-            CommandResult {
-                command: "index",
-                details: String::new(),
-            }
-        )
+/// Индексирует записи для поиска
+impl MashinkaCommand for IndexCommand {
+    fn run(&self) -> Result<CommandResult, Box<dyn Error>> {
+        Ok(CommandResult {
+            command: INDEX_COMMAND_NAME.to_string(),
+            details: String::new(),
+        })
     }
 }

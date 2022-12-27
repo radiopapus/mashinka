@@ -1,0 +1,2 @@
+msgid "[id]"
+msgstr "[value]"

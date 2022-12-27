@@ -8,23 +8,23 @@ pub enum Lang {
 
 impl Display for Lang {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.to_str())
+        match self {
+            Lang::Ru => write!(f, "Ru"),
+            Lang::En => write!(f, "En"),
+        }
     }
 }
 
 impl Lang {
-    pub fn to_str(self) -> &'static str {
-        match self {
-            Lang::Ru => "Ru",
-            Lang::En => "En"
-        }
+    pub fn to_lowercase(&self) -> String {
+        self.to_string().to_lowercase()
     }
 
     pub fn from_str(value: &str) -> Lang {
         match value.trim().to_lowercase().as_str() {
-            "Ru" => Lang::Ru,
-            "En" => Lang::En,
-            _ => panic!("Unknown language")
+            "ru" => Lang::Ru,
+            "en" => Lang::En,
+            _ => panic!("Unknown language {}", value),
         }
     }
 }
