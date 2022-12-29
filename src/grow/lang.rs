@@ -1,4 +1,5 @@
 use std::fmt::{Display, Formatter};
+use std::str::FromStr;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Lang {
@@ -15,16 +16,21 @@ impl Display for Lang {
     }
 }
 
-impl Lang {
-    pub fn to_lowercase(&self) -> String {
-        self.to_string().to_lowercase()
-    }
+// todo use derive_more
+impl FromStr for Lang {
+    type Err = String;
 
-    pub fn from_str(value: &str) -> Lang {
-        match value.trim().to_lowercase().as_str() {
-            "ru" => Lang::Ru,
-            "en" => Lang::En,
-            _ => panic!("Unknown language {}", value),
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.trim().to_lowercase().as_str() {
+            "ru" => Ok(Lang::Ru),
+            "en" => Ok(Lang::En),
+            _ => Err(String::from("Unknown language")),
         }
+    }
+}
+
+impl Lang {
+    pub fn to_lowercase(self) -> String {
+        self.to_string().to_lowercase()
     }
 }

@@ -21,9 +21,8 @@ pub struct DraftPost {
     content: String,
 }
 
-impl DraftPost {
-    /// Создает пустой черновик.
-    pub fn new() -> Self {
+impl Default for DraftPost {
+    fn default() -> Self {
         Self {
             title: String::new(),
             description: String::new(),
@@ -31,6 +30,13 @@ impl DraftPost {
             lang: Lang::Ru,
             content: String::new(),
         }
+    }
+}
+
+impl DraftPost {
+    /// Создает пустой черновик.
+    pub fn new() -> Self {
+        Self { ..Self::default() }
     }
 
     /// Задает, очищает от пробелов и проверяет корректность заголовка записи.
@@ -81,7 +87,7 @@ impl DraftPost {
     /// Аналогично keywords, но в качестве параметров можно передать строку и указать разделитель.
     pub fn keywords_as_str(&mut self, keywords: &str, delimiter: &str) -> &mut DraftPost {
         let keywords: Vec<String> = keywords.split(delimiter).map(ToString::to_string).collect();
-        let _ = &mut self.keywords(keywords);
+        self.keywords(keywords);
         self
     }
 
@@ -101,48 +107,58 @@ impl DraftPost {
     }
 
     /// Помечает черновик как готовый для публикации.
-    /// Технически преобразует структуру DraftPost в Post.
+    /// Технически преобразует структуру `DraftPost` в `Post`.
     pub fn approve(&self) -> Post {
         // Результат "slug" состоит из символов a-z, 0-9 и '-'.
         // Никогда не содержит более одного '-' и не начинается с '-'.
         // see slugify implementation for details.
         let slug = slugify(&self.title);
 
-        let author = if self.lang == Lang::Ru {
-            DEFAULT_AUTHOR.to_string()
-        } else {
-            DEFAULT_AUTHOR_EN.to_string()
-        };
+        let mut author = DEFAULT_AUTHOR.to_string();
+
+        if self.lang != Lang::Ru {
+            author = DEFAULT_AUTHOR_EN.to_string();
+        }
 
         Post {
-            title: self.title.to_owned(),
+            title: self.title.clone(),
             author,
             published_date_time: Utc::now(),
-            slug: slug.to_owned(),
-            description: self.description.to_owned(),
-            keywords: self.keywords.to_owned(),
+            slug,
+            description: self.description.clone(),
+            keywords: self.keywords.clone(),
             lang: self.lang,
-            draft_content: self.content.to_owned(),
+            draft_content: self.content.clone(),
         }
     }
 }
 
 #[cfg(test)]
+#[allow(clippy::or_fun_call)]
 mod tests {
     use crate::grow::lang::Lang;
+    const TEST_POST_TITLE: &str = "Это тестовый заголовок";
+    const TEST_KEYWORDS_AS_STRING: &str = "бумага,А4,297 мм";
+    pub const TEST_LANG_AS_STRING: &str = "ru";
+
+    pub const TEST_DRAFT_TEMPLATE: &str = r#"
+title: [title]
+lang: [lang]
+description: [description]
+keywords: [keywords]
+---
+
+[content]
+"#;
+
     use crate::grow::{
         DEFAULT_AUTHOR, ISO8601_DATE_FORMAT, KEYWORDS_DELIMITER, MAX_CHARS_IN_DESCRIPTION,
-        MAX_CHARS_IN_TITLE,
+        MAX_CHARS_IN_TITLE, TEST_CONTENT, TEST_DESCRIPTION, TEST_DRAFT_TITLE, TEST_SLUG,
     };
 
-    use crate::grow::draft_post::DraftPost;
     use crate::grow::serdes::grow_draft_deserializer::from_grow_draft_string;
     use crate::grow::serdes::process_template;
     use chrono::Utc;
-    use mashinka::{
-        TEST_CONTENT, TEST_DESCRIPTION, TEST_DRAFT_TEMPLATE, TEST_DRAFT_TITLE,
-        TEST_KEYWORDS_AS_STRING, TEST_LANG_AS_STRING, TEST_POST_TITLE, TEST_SLUG,
-    };
     use std::collections::HashMap;
 
     #[derive(Default)]
@@ -186,7 +202,7 @@ mod tests {
     fn test_draft_from_string_conversion_with_default_values() {
         let draft_string = generate_test_draft_string(TestDraftPost::default());
 
-        let draft_post = from_grow_draft_string(&draft_string);
+        let draft_post = from_grow_draft_string(&draft_string).unwrap();
 
         assert_eq!(TEST_DRAFT_TITLE, draft_post.title);
         assert_eq!(TEST_CONTENT, draft_post.content);
@@ -209,7 +225,7 @@ mod tests {
             ..TestDraftPost::default()
         };
         let draft_string = generate_test_draft_string(test_draft_post);
-        from_grow_draft_string(&draft_string);
+        from_grow_draft_string(&draft_string).unwrap();
     }
 
     #[test]
@@ -221,13 +237,13 @@ mod tests {
             ..TestDraftPost::default()
         };
         let draft_string = generate_test_draft_string(test_draft_post);
-        from_grow_draft_string(&draft_string);
+        from_grow_draft_string(&draft_string).unwrap();
     }
 
     #[test]
     fn test_draft_to_post_conversion() {
         let draft_string = generate_test_draft_string(TestDraftPost::default());
-        let draft_post = from_grow_draft_string(&draft_string);
+        let draft_post = from_grow_draft_string(&draft_string).unwrap();
         let post = draft_post.approve();
 
         assert_eq!(TEST_SLUG, post.slug);

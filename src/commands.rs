@@ -1,6 +1,7 @@
 use crate::commands::help::HelpCommand;
 use crate::commands::publish::PublishCommand;
 use crate::config::Config;
+use std::collections::HashMap;
 use std::error::Error;
 
 pub mod help;
@@ -21,15 +22,15 @@ pub trait MashinkaCommand {
 
 pub struct CommandResult {
     command: String,
-    details: String,
+    details: HashMap<String, String>,
 }
 
 impl CommandResult {
-    pub fn summarize(&self) -> String {
+    pub fn summarize(&mut self) -> String {
         let details = if self.details.is_empty() {
             String::new()
         } else {
-            format!("Details: {}", self.details)
+            format!("Details: {:#?}", self.details)
         };
 
         format!(
@@ -45,7 +46,7 @@ pub fn run(mut args: impl Iterator<Item = String>) -> Result<CommandResult, Box<
         None => String::from(HELP_COMMAND_NAME),
     };
 
-    let config = Config::parse_args(args);
+    let config = Config::parse_args(args)?;
 
     run_with_config(&command, config)
 }
@@ -70,15 +71,16 @@ fn run_with_config(command: &str, config: Config) -> Result<CommandResult, Box<d
 #[cfg(test)]
 mod tests {
     use crate::commands::{available_commands, run, CommandResult, HELP_COMMAND_NAME};
+    use std::collections::HashMap;
 
     #[test]
     fn test_run_command() {
-        let expected_command_result = CommandResult {
+        let mut expected_command_result = CommandResult {
             command: HELP_COMMAND_NAME.to_string(),
-            details: String::new(),
+            details: HashMap::new(),
         };
 
-        let result = run([HELP_COMMAND_NAME.to_string()].into_iter()).unwrap();
+        let mut result = run([HELP_COMMAND_NAME.to_string()].into_iter()).unwrap();
         assert_eq!(expected_command_result.summarize(), result.summarize());
     }
 

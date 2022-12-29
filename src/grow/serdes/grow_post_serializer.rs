@@ -12,18 +12,15 @@ pub fn serialize_with_template(post: &Post, template: String) -> String {
         .to_string();
 
     let template_tuple = [
-        ("title", post.slug.to_owned()),
-        ("author", post.author.to_owned()),
-        ("description", post.description.to_owned()),
-        ("image", "/static/images/default.png".to_owned()),
-        ("lang", post.lang.to_string().to_owned()),
-        ("slug", post.slug.to_owned()),
-        ("content", post.draft_content.to_owned()),
-        ("publish_date", published_date.to_owned()),
-        (
-            "keywords",
-            post.keywords.join(KEYWORDS_DELIMITER).to_owned(),
-        ),
+        ("title", post.slug.clone()),
+        ("author", post.author.clone()),
+        ("description", post.description.clone()),
+        ("image", "/static/images/default.png".to_string()),
+        ("lang", post.lang.to_string()),
+        ("slug", post.slug.clone()),
+        ("content", post.draft_content.clone()),
+        ("publish_date", published_date),
+        ("keywords", post.keywords.join(KEYWORDS_DELIMITER)),
     ];
 
     let key_values = HashMap::from(template_tuple.map(|(k, v)| (k, v)));

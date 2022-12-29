@@ -1,4 +1,5 @@
 use crate::commands::{CommandResult, MashinkaCommand, HELP_COMMAND_NAME};
+use std::collections::HashMap;
 use std::error::Error;
 
 pub struct HelpCommand;
@@ -13,7 +14,7 @@ impl MashinkaCommand for HelpCommand {
     fn run(&self) -> Result<CommandResult, Box<dyn Error>> {
         Ok(CommandResult {
             command: HELP_COMMAND_NAME.to_string(),
-            details: String::new(),
+            details: HashMap::new(),
         })
     }
 }
