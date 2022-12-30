@@ -43,11 +43,9 @@ impl Post {
                 .open(translation_path)?
                 .write_all(translation.as_bytes())?;
 
-            let published_post_path = PostPath::from(posts_path.as_os_str()).join(&post_file_name);
+            let published_post_path = PostPath::from(posts_path).join(&post_file_name);
 
-            let published_translation_path = PostPath::from(translation_path.as_os_str());
-
-            Ok((published_post_path, published_translation_path))
+            Ok((published_post_path, TranslationPath::from(translation_path)))
         };
 
         write_files()
@@ -68,9 +66,10 @@ impl Post {
     }
 
     fn build_translation(&self) -> String {
-        let translation_map: HashMap<&str, String> =
-            HashMap::from([("id", self.slug.clone()), ("value", self.title.clone())]);
-        process_template(TRANSLATION_TEMPLATE.to_owned(), translation_map)
+        process_template(
+            TRANSLATION_TEMPLATE.to_owned(),
+            HashMap::from([("id", self.slug.clone()), ("value", self.title.clone())]),
+        )
     }
 }
 
