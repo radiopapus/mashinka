@@ -1,11 +1,11 @@
-mod commands;
+mod command;
 mod config;
 mod grow;
 
 use std::env::Args;
 use std::{env, process};
 
-use crate::commands::run;
+use crate::command::run;
 
 use dotenv::dotenv;
 

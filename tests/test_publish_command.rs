@@ -10,7 +10,7 @@ pub mod test_publish_command {
     use std::path::Path;
 
     use crate::common::BIN_NAME;
-    use mashinka::commands::PUBLISH_COMMAND_NAME;
+    use mashinka::command::PUBLISH_COMMAND_NAME;
     use mashinka::grow::lang::Lang;
     use mashinka::grow::serdes::process_template;
     use mashinka::grow::{

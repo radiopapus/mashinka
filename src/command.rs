@@ -1,5 +1,7 @@
-use crate::commands::help::HelpCommand;
-use crate::commands::publish::PublishCommand;
+#![allow(clippy::must_use_candidate)]
+
+use crate::command::help::Help;
+use crate::command::publish::Publish;
 use crate::config::Config;
 use std::collections::HashMap;
 use std::env;
@@ -46,7 +48,7 @@ pub enum Error {
     // }
 }
 
-pub trait MashinkaCommand {
+pub trait Command {
     fn run(&self) -> Result<CommandResult, Error>;
 }
 
@@ -82,14 +84,14 @@ pub fn run(mut args: impl Iterator<Item = String>) -> Result<CommandResult, Erro
 }
 
 fn run_with_config(command: &str, config: Config) -> Result<CommandResult, Error> {
-    let cmd: Box<dyn MashinkaCommand> = match command {
+    let cmd: Box<dyn Command> = match command {
         // INDEX_COMMAND_NAME => IndexCommand.run(config),
-        PUBLISH_COMMAND_NAME => PublishCommand::new(config),
-        HELP_COMMAND_NAME => HelpCommand::new(),
+        PUBLISH_COMMAND_NAME => Publish::new(config),
+        HELP_COMMAND_NAME => Help::new(),
         _unknown => {
             let available_commands = available_commands();
             panic!(
-                "Unknown command {}. Available commands are {:?} or type `mashinka help` for help",
+                "Unknown command {}. Available command are {:?} or type `mashinka help` for help",
                 command, available_commands
             );
         }
@@ -100,7 +102,7 @@ fn run_with_config(command: &str, config: Config) -> Result<CommandResult, Error
 
 #[cfg(test)]
 mod tests {
-    use crate::commands::{available_commands, run, CommandResult, HELP_COMMAND_NAME};
+    use crate::command::{available_commands, run, CommandResult, HELP_COMMAND_NAME};
     use std::collections::HashMap;
 
     #[test]
@@ -119,11 +121,11 @@ mod tests {
     fn test_run_unknown_command() {
         let available_commands = available_commands().join(",");
         let resolved_error_message = "Unknown command {command}. \
-        Available commands are {commands} or type `mashinka help` for help"
+        Available command are {command} or type `mashinka help` for help"
             .replace("{command}", "unknown")
-            .replace("{commands}", available_commands.as_str());
+            .replace("{command}", available_commands.as_str());
 
         run(["unknown".to_string()].into_iter())
-            .expect(format!("{}", resolved_error_message).as_str());
+            .unwrap_or_else(|_| panic!("{}", resolved_error_message));
     }
 }

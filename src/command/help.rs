@@ -1,15 +1,17 @@
-use crate::commands::{CommandResult, Error, MashinkaCommand, HELP_COMMAND_NAME};
+#![allow(clippy::must_use_candidate)]
+
+use crate::command::{Command, CommandResult, Error, HELP_COMMAND_NAME};
 use std::collections::HashMap;
 
-pub struct HelpCommand;
+pub struct Help;
 
-impl HelpCommand {
-    pub fn new() -> Box<HelpCommand> {
+impl Help {
+    pub fn new() -> Box<Help> {
         Box::new(Self)
     }
 }
 
-impl MashinkaCommand for HelpCommand {
+impl Command for Help {
     fn run(&self) -> Result<CommandResult, Error> {
         Ok(CommandResult {
             command: HELP_COMMAND_NAME.to_string(),

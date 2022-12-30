@@ -1,4 +1,6 @@
-use crate::commands::Error;
+#![allow(clippy::must_use_candidate)]
+
+use crate::command::Error;
 use crate::grow::lang::Lang;
 use std::collections::HashMap;
 use std::env;

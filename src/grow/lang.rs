@@ -1,3 +1,5 @@
+#![allow(clippy::must_use_candidate)]
+
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 

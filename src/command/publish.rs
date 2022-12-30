@@ -1,21 +1,21 @@
-use crate::commands::{CommandResult, Error, MashinkaCommand, PUBLISH_COMMAND_NAME};
+use crate::command::{Command, CommandResult, Error, PUBLISH_COMMAND_NAME};
 use crate::config::Config;
 use crate::grow::draft_post::DraftPost;
 use std::collections::HashMap;
 
-pub struct PublishCommand {
+pub struct Publish {
     config: Config,
 }
 
-impl PublishCommand {
-    pub fn new(config: Config) -> Box<PublishCommand> {
+impl Publish {
+    pub fn new(config: Config) -> Box<Publish> {
         Box::new(Self { config })
     }
 }
 
 /// Публикует черновик. Технически читает данные из черновика (--draft-post-path) и преобразует данные в
 /// grow запись (--post-path) с созданием файлов перевода в зависимости от языка lang.
-impl MashinkaCommand for PublishCommand {
+impl Command for Publish {
     fn run(&self) -> Result<CommandResult, Error> {
         let draft_path = self.config.get_draft_path_or_default()?;
         let draft_post = DraftPost::from_grow_draft_file(&draft_path)?;

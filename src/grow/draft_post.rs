@@ -1,7 +1,9 @@
-use crate::commands::Error;
+#![allow(clippy::must_use_candidate)]
+
+use crate::command::Error;
 use crate::grow::lang::Lang;
 use crate::grow::post::Post;
-use crate::grow::serdes::grow_draft_deserializer::deserialize;
+use crate::grow::serdes::deserialize;
 use crate::grow::{
     DEFAULT_AUTHOR, DEFAULT_AUTHOR_EN, KEYWORDS_DELIMITER, MAX_CHARS_IN_DESCRIPTION,
     MAX_CHARS_IN_TITLE,
