@@ -65,5 +65,9 @@ $dates:
 ---
 [content]"#;
 
-pub const TEST_TRANSLATION_TEMPLATE: &str = r#"msgid "[id]"
-msgstr "[value]""#;
+pub const TEST_TRANSLATION_TEMPLATE: &str = r#"
+
+msgid "[id]"
+msgstr "[value]"
+
+"#;

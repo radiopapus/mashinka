@@ -1,10 +1,16 @@
+use crate::commands::Error;
 use crate::grow::lang::Lang;
 use crate::grow::post::Post;
+use crate::grow::serdes::grow_draft_deserializer::deserialize;
 use crate::grow::{
-    DEFAULT_AUTHOR, DEFAULT_AUTHOR_EN, MAX_CHARS_IN_DESCRIPTION, MAX_CHARS_IN_TITLE,
+    DEFAULT_AUTHOR, DEFAULT_AUTHOR_EN, KEYWORDS_DELIMITER, MAX_CHARS_IN_DESCRIPTION,
+    MAX_CHARS_IN_TITLE,
 };
 use chrono::Utc;
 use slug::slugify;
+use std::fs;
+use std::path::PathBuf;
+use std::str::FromStr;
 
 /// Структура для черновика записи. В дальнейшем черновик может быть опубликован (превращен в Post)
 #[derive(Debug, PartialEq, Eq)]
@@ -37,6 +43,28 @@ impl DraftPost {
     /// Создает пустой черновик.
     pub fn new() -> Self {
         Self { ..Self::default() }
+    }
+
+    pub fn from_grow_draft_file(draft_path: &PathBuf) -> Result<DraftPost, Error> {
+        let draft_content = fs::read_to_string(draft_path).map_err(Error::ReadDraft)?;
+
+        DraftPost::from_grow_draft_string(&draft_content)
+    }
+
+    pub fn from_grow_draft_string(draft_string: &str) -> Result<DraftPost, Error> {
+        let mut draft_post = DraftPost::new();
+        for (key, value) in deserialize(draft_string) {
+            match key {
+                "title" => draft_post.title(value),
+                "description" => draft_post.description(value),
+                "keywords" => draft_post.keywords_as_str(value, KEYWORDS_DELIMITER),
+                "lang" => draft_post.lang(Lang::from_str(value).map_err(Error::UnknownLang)?),
+                "content" => draft_post.content(value),
+                key => return Err(Error::UnknownKey(key.to_string())),
+            };
+        }
+
+        Ok(draft_post)
     }
 
     /// Задает, очищает от пробелов и проверяет корректность заголовка записи.
@@ -156,7 +184,7 @@ keywords: [keywords]
         MAX_CHARS_IN_TITLE, TEST_CONTENT, TEST_DESCRIPTION, TEST_DRAFT_TITLE, TEST_SLUG,
     };
 
-    use crate::grow::serdes::grow_draft_deserializer::from_grow_draft_string;
+    use crate::grow::draft_post::DraftPost;
     use crate::grow::serdes::process_template;
     use chrono::Utc;
     use std::collections::HashMap;
@@ -202,7 +230,7 @@ keywords: [keywords]
     fn test_draft_from_string_conversion_with_default_values() {
         let draft_string = generate_test_draft_string(TestDraftPost::default());
 
-        let draft_post = from_grow_draft_string(&draft_string).unwrap();
+        let draft_post = DraftPost::from_grow_draft_string(&draft_string).unwrap();
 
         assert_eq!(TEST_DRAFT_TITLE, draft_post.title);
         assert_eq!(TEST_CONTENT, draft_post.content);
@@ -225,7 +253,7 @@ keywords: [keywords]
             ..TestDraftPost::default()
         };
         let draft_string = generate_test_draft_string(test_draft_post);
-        from_grow_draft_string(&draft_string).unwrap();
+        DraftPost::from_grow_draft_string(&draft_string).unwrap();
     }
 
     #[test]
@@ -237,20 +265,20 @@ keywords: [keywords]
             ..TestDraftPost::default()
         };
         let draft_string = generate_test_draft_string(test_draft_post);
-        from_grow_draft_string(&draft_string).unwrap();
+        DraftPost::from_grow_draft_string(&draft_string).unwrap();
     }
 
     #[test]
     fn test_draft_to_post_conversion() {
         let draft_string = generate_test_draft_string(TestDraftPost::default());
-        let draft_post = from_grow_draft_string(&draft_string).unwrap();
+        let draft_post = DraftPost::from_grow_draft_string(&draft_string).unwrap();
         let post = draft_post.approve();
 
         assert_eq!(TEST_SLUG, post.slug);
         assert_eq!(TEST_DESCRIPTION, post.description);
         assert_eq!(
             TEST_KEYWORDS_AS_STRING,
-            post.keywords.join(&KEYWORDS_DELIMITER.to_string())
+            post.keywords.join(KEYWORDS_DELIMITER)
         );
         assert_eq!(TEST_CONTENT, post.draft_content);
         assert_eq!(TEST_DESCRIPTION, post.description);

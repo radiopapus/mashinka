@@ -2,7 +2,8 @@ use crate::commands::help::HelpCommand;
 use crate::commands::publish::PublishCommand;
 use crate::config::Config;
 use std::collections::HashMap;
-use std::error::Error;
+use std::env;
+use thiserror::Error;
 
 pub mod help;
 pub mod index;
@@ -16,8 +17,37 @@ pub fn available_commands() -> [&'static str; 3] {
     [INDEX_COMMAND_NAME, PUBLISH_COMMAND_NAME, HELP_COMMAND_NAME]
 }
 
+#[derive(Error, Debug)]
+pub enum Error {
+    // config
+    #[error("Check parameter format, please. Should be --param-name or --param-name=value")]
+    Parse(),
+    #[error("Value for {0} should not be empty")]
+    EmptyValue(String),
+    #[error("test")]
+    EnvVar(#[from] env::VarError),
+
+    // deserializer
+    #[error("Have no clue about {0} key")]
+    UnknownKey(String),
+    #[error("Have no clue about {0} language value")]
+    UnknownLang(String),
+    #[error("Can't read file {0}")]
+    ReadDraft(std::io::Error),
+    #[error("Can't write file {0}")]
+    WritePost(std::io::Error),
+    //Disconnect(#[from] io::Error),
+    // #[error("the data for key `{0}` is not available")]
+    // Redaction(String),
+    // #[error("invalid header (expected {expected:?}, found {found:?})")]
+    // InvalidHeader {
+    //     expected: String,
+    //     found: String,
+    // }
+}
+
 pub trait MashinkaCommand {
-    fn run(&self) -> Result<CommandResult, Box<dyn Error>>;
+    fn run(&self) -> Result<CommandResult, Error>;
 }
 
 pub struct CommandResult {
@@ -40,7 +70,7 @@ impl CommandResult {
     }
 }
 
-pub fn run(mut args: impl Iterator<Item = String>) -> Result<CommandResult, Box<dyn Error>> {
+pub fn run(mut args: impl Iterator<Item = String>) -> Result<CommandResult, Error> {
     let command = match args.next() {
         Some(v) => v,
         None => String::from(HELP_COMMAND_NAME),
@@ -51,7 +81,7 @@ pub fn run(mut args: impl Iterator<Item = String>) -> Result<CommandResult, Box<
     run_with_config(&command, config)
 }
 
-fn run_with_config(command: &str, config: Config) -> Result<CommandResult, Box<dyn Error>> {
+fn run_with_config(command: &str, config: Config) -> Result<CommandResult, Error> {
     let cmd: Box<dyn MashinkaCommand> = match command {
         // INDEX_COMMAND_NAME => IndexCommand.run(config),
         PUBLISH_COMMAND_NAME => PublishCommand::new(config),

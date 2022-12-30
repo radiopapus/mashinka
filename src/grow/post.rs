@@ -1,3 +1,4 @@
+use crate::commands::Error;
 use crate::grow::lang::Lang;
 use crate::grow::serdes::grow_post_serializer::serialize_with_template;
 use crate::grow::serdes::process_template;
@@ -29,19 +30,22 @@ impl Post {
         &self,
         posts_path: &PostPath,
         translation_path: &TranslationPath,
-    ) -> std::io::Result<(PostPath, TranslationPath)> {
+    ) -> Result<(PostPath, TranslationPath), Error> {
         let post_file_name = self.build_file_name(posts_path);
         let content = self.build_content();
         let translation = &self.build_translation();
 
         // Запись и перевод
-        let write_files = || -> std::io::Result<(PostPath, TranslationPath)> {
-            fs::write(&post_file_name, content)?;
+        let write_files = || -> Result<(PostPath, TranslationPath), Error> {
+            fs::write(&post_file_name, &content).map_err(Error::WritePost)?;
 
-            File::options()
+            let mut f = File::options()
                 .append(true)
-                .open(translation_path)?
-                .write_all(translation.as_bytes())?;
+                .open(translation_path)
+                .map_err(Error::WritePost)?;
+
+            f.write_all(translation.as_bytes())
+                .map_err(Error::WritePost)?;
 
             let published_post_path = PostPath::from(posts_path).join(&post_file_name);
 

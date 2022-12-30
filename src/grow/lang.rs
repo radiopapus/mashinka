@@ -20,7 +20,7 @@ impl Display for Lang {
 impl FromStr for Lang {
     type Err = String;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    fn from_str(s: &str) -> Result<Self, String> {
         match s.trim().to_lowercase().as_str() {
             "ru" => Ok(Lang::Ru),
             "en" => Ok(Lang::En),
