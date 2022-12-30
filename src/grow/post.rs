@@ -25,6 +25,12 @@ pub struct Post {
 }
 
 impl Post {
+    /// Публикует `Post` по путям `posts_path` (запись) и `translation_path`(перевод).
+    ///
+    ///
+    /// # Errors
+    ///
+    /// Вернет `Error` при записи файлов возникнут проблемы.
     pub fn publish(
         &self,
         posts_path: &PostPath,

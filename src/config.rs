@@ -21,11 +21,22 @@ impl Default for Config {
 }
 
 impl Config {
+    /// # Errors
+    ///
+    /// Вернет `Error` если при парсинге входных параметров ключи имеют неверный формат.
+    /// Они должны иметь формат --key-name или --key-name=value.
     pub fn parse_args(args: impl Iterator<Item = String>) -> Result<Self, Error> {
         let mut args_map = HashMap::new();
         for param in args {
             if param.contains(PARAMETER_KEY_VALUE_DELIMITER) {
-                let (k, v) = param.split_once(PARAMETER_KEY_VALUE_DELIMITER).unwrap();
+                let (k, v) = param
+                    .split_once(PARAMETER_KEY_VALUE_DELIMITER)
+                    .ok_or_else(|| {
+                        Error::IncorrectFormat(format!(
+                            "Parameter key values should be delimited by {}",
+                            PARAMETER_KEY_VALUE_DELIMITER
+                        ))
+                    })?;
                 args_map.insert(k.to_string(), v.to_string());
                 continue;
             }
@@ -47,6 +58,10 @@ impl Config {
     /// Возвращает путь до grow черновика
     /// Если задан параметр --draft-path, то использует его, иначе берет значение из переменной
     /// окружения `ABS_POST_DRAFT_FILE`.
+    ///
+    /// # Errors
+    ///
+    /// Вернет `Error` если переменная окружения `ABS_POST_DRAFT_FILE` не задана или имеет нулевую длинну.
     pub fn get_draft_path_or_default(&self) -> Result<PathBuf, Error> {
         let default_draft_path = env::var("ABS_POST_DRAFT_FILE")?;
 
@@ -65,6 +80,9 @@ impl Config {
     /// Возвращает путь до post записей
     /// Если задан параметр `--posts-path`, то использует его, иначе берет значение из переменной
     /// окружения `ABS_POSTS_PATH`.
+    /// # Errors
+    ///
+    /// Вернет `Error` если переменная окружения `ABS_POSTS_PATH` не задана или имеет нулевую длинну.
     pub fn get_posts_path_or_default(&self, lang: Lang) -> Result<PathBuf, Error> {
         let default_posts_path = env::var("ABS_POSTS_PATH")?;
 
@@ -84,6 +102,9 @@ impl Config {
     /// Возвращает путь до переводов в зависимости от языка записи.
     /// Если задан параметр --translations-path, то использует его, иначе берет значение из
     /// переменной окружения `ABS_TRANSLATIONS_PATH`.
+    /// # Errors
+    ///
+    /// Вернет Error если переменная окружения `ABS_TRANSLATIONS_PATH` не задана или имеет нулевую длинну.
     pub fn get_translation_path_or_default(&self, lang: Lang) -> Result<PathBuf, Error> {
         let default_translation_path = env::var("ABS_TRANSLATIONS_PATH")?;
 

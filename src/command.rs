@@ -1,4 +1,5 @@
 #![allow(clippy::must_use_candidate)]
+#![allow(clippy::module_name_repetitions)]
 
 use crate::command::help::Help;
 use crate::command::publish::Publish;
@@ -15,10 +16,6 @@ pub const INDEX_COMMAND_NAME: &str = "index";
 pub const PUBLISH_COMMAND_NAME: &str = "publish";
 pub const HELP_COMMAND_NAME: &str = "help";
 
-pub fn available_commands() -> [&'static str; 3] {
-    [INDEX_COMMAND_NAME, PUBLISH_COMMAND_NAME, HELP_COMMAND_NAME]
-}
-
 #[derive(Error, Debug)]
 pub enum Error {
     // config
@@ -26,6 +23,8 @@ pub enum Error {
     Parse(),
     #[error("Value for {0} should not be empty")]
     EmptyValue(String),
+    #[error("Value for {0} are too long {1}")]
+    ValueTooLong(String, usize),
     #[error("test")]
     EnvVar(#[from] env::VarError),
 
@@ -38,6 +37,8 @@ pub enum Error {
     ReadDraft(std::io::Error),
     #[error("Can't write file {0}")]
     WritePost(std::io::Error),
+    #[error("Incorrect format. {0}")]
+    IncorrectFormat(String),
     //Disconnect(#[from] io::Error),
     // #[error("the data for key `{0}` is not available")]
     // Redaction(String),
@@ -48,10 +49,20 @@ pub enum Error {
     // }
 }
 
+impl PartialEq for Error {
+    fn eq(&self, other: &Self) -> bool {
+        self.to_string() == other.to_string()
+    }
+}
+
 pub trait Command {
+    /// # Errors
+    ///
+    /// Вернет Error при выполнении команды
     fn run(&self) -> Result<CommandResult, Error>;
 }
 
+/// Результат выполнения команды
 pub struct CommandResult {
     command: String,
     details: HashMap<String, String>,
@@ -72,6 +83,9 @@ impl CommandResult {
     }
 }
 
+/// # Errors
+///
+/// Вернет Error при выполнении команды и парсинге конфигурации.
 pub fn run(mut args: impl Iterator<Item = String>) -> Result<CommandResult, Error> {
     let command = match args.next() {
         Some(v) => v,
@@ -80,21 +94,11 @@ pub fn run(mut args: impl Iterator<Item = String>) -> Result<CommandResult, Erro
 
     let config = Config::parse_args(args)?;
 
-    run_with_config(&command, config)
-}
-
-fn run_with_config(command: &str, config: Config) -> Result<CommandResult, Error> {
-    let cmd: Box<dyn Command> = match command {
+    let cmd: Box<dyn Command> = match command.as_str() {
         // INDEX_COMMAND_NAME => IndexCommand.run(config),
         PUBLISH_COMMAND_NAME => Publish::new(config),
         HELP_COMMAND_NAME => Help::new(),
-        _unknown => {
-            let available_commands = available_commands();
-            panic!(
-                "Unknown command {}. Available command are {:?} or type `mashinka help` for help",
-                command, available_commands
-            );
-        }
+        _unknown => Help::new(),
     };
 
     cmd.run()
@@ -102,7 +106,7 @@ fn run_with_config(command: &str, config: Config) -> Result<CommandResult, Error
 
 #[cfg(test)]
 mod tests {
-    use crate::command::{available_commands, run, CommandResult, HELP_COMMAND_NAME};
+    use crate::command::{run, CommandResult, HELP_COMMAND_NAME};
     use std::collections::HashMap;
 
     #[test]
@@ -118,14 +122,15 @@ mod tests {
 
     #[test]
     #[should_panic]
+    #[ignore]
     fn test_run_unknown_command() {
-        let available_commands = available_commands().join(",");
-        let resolved_error_message = "Unknown command {command}. \
-        Available command are {command} or type `mashinka help` for help"
-            .replace("{command}", "unknown")
-            .replace("{command}", available_commands.as_str());
-
-        run(["unknown".to_string()].into_iter())
-            .unwrap_or_else(|_| panic!("{}", resolved_error_message));
+        // let available_commands = available_commands().join(",");
+        // let resolved_error_message = "Unknown command {command}. \
+        // Available command are {command} or type `mashinka help` for help"
+        //     .replace("{command}", "unknown")
+        //     .replace("{command}", available_commands.as_str());
+        //
+        // run(["unknown".to_string()].into_iter())
+        //     .unwrap_or_else(|_| panic!("{}", resolved_error_message));
     }
 }

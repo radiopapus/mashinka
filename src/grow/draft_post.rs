@@ -6,7 +6,7 @@ use crate::grow::post::Post;
 use crate::grow::serdes::deserialize;
 use crate::grow::{
     DEFAULT_AUTHOR, DEFAULT_AUTHOR_EN, KEYWORDS_DELIMITER, MAX_CHARS_IN_DESCRIPTION,
-    MAX_CHARS_IN_TITLE,
+    MAX_CHARS_IN_TITLE, MAX_KEYWORDS_COUNT,
 };
 use chrono::Utc;
 use slug::slugify;
@@ -47,21 +47,32 @@ impl DraftPost {
         Self { ..Self::default() }
     }
 
+    /// Возвращает `DraftPost` на основе данных файла `draft_path`
+    ///
+    /// # Errors
+    ///
+    /// Вернет `Error` если файл не может быть прочитан.
     pub fn from_grow_draft_file(draft_path: &PathBuf) -> Result<DraftPost, Error> {
         let draft_content = fs::read_to_string(draft_path).map_err(Error::ReadDraft)?;
 
         DraftPost::from_grow_draft_string(&draft_content)
     }
 
+    /// Возвращает `DraftPost` на основе строки `draft_string`.
+    ///
+    /// # Errors
+    ///
+    /// Вернет `Error` если ключ или значение не может быть десериализовано.
+    /// Доступные поля `title`, `description`,`keywords`, `lang`, `content`
     pub fn from_grow_draft_string(draft_string: &str) -> Result<DraftPost, Error> {
         let mut draft_post = DraftPost::new();
-        for (key, value) in deserialize(draft_string) {
+        for (key, value) in deserialize(draft_string)? {
             match key {
-                "title" => draft_post.title(value),
-                "description" => draft_post.description(value),
-                "keywords" => draft_post.keywords_as_str(value, KEYWORDS_DELIMITER),
+                "title" => draft_post.title(value)?,
+                "description" => draft_post.description(value)?,
+                "keywords" => draft_post.keywords_as_str(value, KEYWORDS_DELIMITER)?,
                 "lang" => draft_post.lang(Lang::from_str(value).map_err(Error::UnknownLang)?),
-                "content" => draft_post.content(value),
+                "content" => draft_post.content(value)?,
                 key => return Err(Error::UnknownKey(key.to_string())),
             };
         }
@@ -70,55 +81,87 @@ impl DraftPost {
     }
 
     /// Задает, очищает от пробелов и проверяет корректность заголовка записи.
-    pub fn title(&mut self, title: &str) -> &mut DraftPost {
+    ///
+    /// # Errors
+    ///
+    /// Вернет `Error` если `title` пустой или более `MAX_CHARS_IN_TITLE` символов.
+    pub fn title(&mut self, title: &str) -> Result<&mut DraftPost, Error> {
         let title = title.trim();
 
-        assert!(!title.is_empty(), "title should not be empty");
-        assert!(
-            title.chars().count() <= MAX_CHARS_IN_TITLE,
-            "title should be less than {} characters",
-            MAX_CHARS_IN_TITLE
-        );
+        if title.is_empty() {
+            return Err(Error::EmptyValue(String::from("title")));
+        }
+
+        if title.chars().count() >= MAX_CHARS_IN_TITLE {
+            return Err(Error::ValueTooLong(
+                String::from("title"),
+                MAX_CHARS_IN_TITLE,
+            ));
+        }
 
         self.title = title.to_string();
-        self
+        Ok(self)
     }
 
     /// Задает, очищает от пробелов и проверяет корректность описания записи.
-    pub fn description(&mut self, description: &str) -> &mut DraftPost {
+    ///
+    /// # Errors
+    ///
+    /// Вернет `Error` если `description` пустой или более `MAX_CHARS_IN_DESCRIPTION` символов.
+    pub fn description(&mut self, description: &str) -> Result<&mut DraftPost, Error> {
         let description = description.trim();
 
-        assert!(!description.is_empty(), "description should not be empty");
-        assert!(
-            description.chars().count() <= MAX_CHARS_IN_DESCRIPTION,
-            "description should be less than {} characters",
-            MAX_CHARS_IN_DESCRIPTION
-        );
+        if description.is_empty() {
+            return Err(Error::EmptyValue(String::from("description")));
+        }
+
+        if description.chars().count() >= MAX_CHARS_IN_DESCRIPTION {
+            return Err(Error::ValueTooLong(
+                String::from("description"),
+                MAX_CHARS_IN_DESCRIPTION,
+            ));
+        }
 
         self.description = description.to_string();
-        self
+        Ok(self)
     }
 
     /// Задает, очищает от пробелов и проверяет корректность ключевых слов записи.
-    pub fn keywords(&mut self, keywords: Vec<String>) -> &mut DraftPost {
-        assert!(!keywords.is_empty(), "keywords should not be empty");
-        assert!(
-            keywords.len() <= 10,
-            "keywords should be less than 10 keywords"
-        );
+    ///
+    /// # Errors
+    ///
+    /// Вернет `Error` если keywords пустой или более `MAX_KEYWORDS_COUNT` элементов.
+    pub fn keywords(&mut self, keywords: Vec<String>) -> Result<&mut DraftPost, Error> {
+        if keywords.is_empty() {
+            return Err(Error::EmptyValue(String::from("keywords")));
+        }
 
-        self.keywords = keywords
-            .into_iter()
-            .map(|keyword| keyword.trim().to_string())
-            .collect();
-        self
+        if keywords.len() >= MAX_KEYWORDS_COUNT {
+            return Err(Error::ValueTooLong(
+                String::from("keywords"),
+                MAX_KEYWORDS_COUNT,
+            ));
+        }
+
+        for k in keywords {
+            self.keywords.push(k.trim().to_string());
+        }
+
+        Ok(self)
     }
 
     /// Аналогично keywords, но в качестве параметров можно передать строку и указать разделитель.
-    pub fn keywords_as_str(&mut self, keywords: &str, delimiter: &str) -> &mut DraftPost {
+    /// # Errors
+    ///
+    /// См. keywords
+    pub fn keywords_as_str(
+        &mut self,
+        keywords: &str,
+        delimiter: &str,
+    ) -> Result<&mut DraftPost, Error> {
         let keywords: Vec<String> = keywords.split(delimiter).map(ToString::to_string).collect();
-        self.keywords(keywords);
-        self
+        self.keywords(keywords)?;
+        Ok(self)
     }
 
     /// Задает язык записи.
@@ -127,13 +170,20 @@ impl DraftPost {
         self
     }
 
-    pub fn content(&mut self, content: &str) -> &mut DraftPost {
+    /// Задает текст записи.
+    ///
+    /// # Errors
+    ///
+    /// Вернет `Error` если content пустой.
+    pub fn content(&mut self, content: &str) -> Result<&mut DraftPost, Error> {
         let content = content.trim();
 
-        assert!(!content.is_empty(), "content should not be empty");
+        if content.is_empty() {
+            return Err(Error::EmptyValue(String::from("content")));
+        }
 
         self.content = content.to_string();
-        self
+        Ok(self)
     }
 
     /// Помечает черновик как готовый для публикации.

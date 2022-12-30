@@ -1,4 +1,5 @@
 #![allow(clippy::must_use_candidate)]
+use crate::command::Error;
 use crate::grow::post::Post;
 use std::collections::HashMap;
 
@@ -6,32 +7,43 @@ use crate::grow::{
     ISO8601_DATE_TIME_FORMAT, KEYWORDS_DELIMITER, KEY_VALUE_DELIMITER, LF, META_DELIMITER,
 };
 
-/// Преобразует строку в `DraftPost`. Строка должна удовлетворять формату grow записи. Например
+/// Преобразует строку в `DraftPost`. Строка должна удовлетворять формату grow записи. Например:
 /// key: value
 ///---
 /// content
-pub fn deserialize(draft_content: &str) -> HashMap<&str, &str> {
+///
+/// # Errors
+///
+/// Вернет Error при десериализации данных. Meta данные должны быть разделены `META_DELIMITER`, а meta
+/// ключ-значение разделены `KEY_VALUE_DELIMITER`.
+pub fn deserialize(draft_content: &str) -> Result<HashMap<&str, &str>, Error> {
     let (meta, content) = draft_content
         .trim()
         .split_once(META_DELIMITER)
-        .unwrap_or_else(|| panic!("Meta and content should be delimited by {}", META_DELIMITER));
+        .ok_or_else(|| {
+            Error::IncorrectFormat(format!(
+                "Meta and content should be delimited by {}",
+                META_DELIMITER
+            ))
+        })?;
 
     let meta_lines: Vec<&str> = meta.trim().split(LF).collect();
 
-    let meta_key_values = meta_lines.iter().map(|line| {
-        line.split_once(KEY_VALUE_DELIMITER)
-            .expect("Check meta key value delimiter")
-    });
-
     let mut hashmap = HashMap::new();
 
-    for (key, value) in meta_key_values {
+    for line in meta_lines {
+        let (key, value) = line.split_once(KEY_VALUE_DELIMITER).ok_or_else(|| {
+            Error::IncorrectFormat(format!(
+                "Check meta key value delimiter should be {}",
+                KEY_VALUE_DELIMITER
+            ))
+        })?;
         hashmap.insert(key, value);
     }
 
     hashmap.insert("content", content);
 
-    hashmap
+    Ok(hashmap)
 }
 
 /// Преобразует Post в форматированную строку для grow записи.
@@ -59,9 +71,42 @@ pub fn serialize_with_template(post: &Post, template: String) -> String {
     process_template(template, key_values)
 }
 
-pub fn process_template(mut content: String, hashmap: HashMap<&str, String>) -> String {
+pub fn process_template<S: ::std::hash::BuildHasher>(
+    mut content: String,
+    hashmap: HashMap<&str, String, S>,
+) -> String {
     for (key, value) in hashmap {
         content = content.replace(&format!("[{key}]"), &value);
     }
     content
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::command::Error;
+    use crate::grow::serdes::deserialize;
+    use crate::grow::{KEY_VALUE_DELIMITER, META_DELIMITER};
+
+    #[test]
+    fn fail_deserialize_when_meta_content_have_incorrect_delimiter() {
+        let err = Error::IncorrectFormat(format!(
+            "Meta and content should be delimited by {}",
+            META_DELIMITER
+        ));
+
+        assert_eq!(err, deserialize("Incorrect value").err().unwrap());
+    }
+
+    #[test]
+    fn fail_deserialize_when_meta_content_have_incorrect_key_value_delimiter() {
+        let err = Error::IncorrectFormat(format!(
+            "Check meta key value delimiter should be {}",
+            KEY_VALUE_DELIMITER
+        ));
+
+        assert_eq!(
+            err,
+            deserialize("incorrect_meta_value---content").err().unwrap()
+        );
+    }
 }
