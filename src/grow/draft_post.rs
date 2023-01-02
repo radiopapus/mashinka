@@ -236,6 +236,7 @@ keywords: [keywords]
         MAX_CHARS_IN_TITLE, TEST_CONTENT, TEST_DESCRIPTION, TEST_DRAFT_TITLE, TEST_SLUG,
     };
 
+    use crate::command::Error::ValueTooLong;
     use crate::grow::draft_post::DraftPost;
     use crate::grow::serdes::process_template;
     use chrono::Utc;
@@ -297,7 +298,6 @@ keywords: [keywords]
     }
 
     #[test]
-    #[should_panic(expected = "title should be less than 75 characters")]
     fn fail_draft_from_string_conversion_when_title_out_of_limit() {
         let many_chars_in_title = String::from_utf8(vec![b'X'; MAX_CHARS_IN_TITLE + 1]);
         let test_draft_post = TestDraftPost {
@@ -305,11 +305,14 @@ keywords: [keywords]
             ..TestDraftPost::default()
         };
         let draft_string = generate_test_draft_string(test_draft_post);
-        DraftPost::from_grow_draft_string(&draft_string).unwrap();
+        let result = DraftPost::from_grow_draft_string(&draft_string);
+        assert_eq!(
+            ValueTooLong("title".to_string(), MAX_CHARS_IN_TITLE),
+            result.err().unwrap()
+        )
     }
 
     #[test]
-    #[should_panic(expected = "description should be less than 255 characters")]
     fn fail_draft_from_string_conversion_when_description_out_of_limit() {
         let many_chars_in_description = String::from_utf8(vec![b'X'; MAX_CHARS_IN_DESCRIPTION + 1]);
         let test_draft_post = TestDraftPost {
@@ -317,7 +320,11 @@ keywords: [keywords]
             ..TestDraftPost::default()
         };
         let draft_string = generate_test_draft_string(test_draft_post);
-        DraftPost::from_grow_draft_string(&draft_string).unwrap();
+        let result = DraftPost::from_grow_draft_string(&draft_string);
+        assert_eq!(
+            ValueTooLong("description".to_string(), MAX_CHARS_IN_DESCRIPTION),
+            result.err().unwrap()
+        )
     }
 
     #[test]
