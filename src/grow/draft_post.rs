@@ -3,16 +3,15 @@
 use crate::command::Error;
 use crate::grow::lang::Lang;
 use crate::grow::post::Post;
-use crate::grow::serdes::deserialize;
+use crate::grow::serdes::deserialize_to_draft_post;
 use crate::grow::{
-    DEFAULT_AUTHOR, DEFAULT_AUTHOR_EN, KEYWORDS_DELIMITER, MAX_CHARS_IN_DESCRIPTION,
-    MAX_CHARS_IN_TITLE, MAX_KEYWORDS_COUNT,
+    DEFAULT_AUTHOR, DEFAULT_AUTHOR_EN, MAX_CHARS_IN_DESCRIPTION, MAX_CHARS_IN_TITLE,
+    MAX_KEYWORDS_COUNT,
 };
 use chrono::Utc;
 use slug::slugify;
 use std::fs;
 use std::path::PathBuf;
-use std::str::FromStr;
 
 /// Структура для черновика записи. В дальнейшем черновик может быть опубликован (превращен в Post)
 #[derive(Debug, PartialEq, Eq)]
@@ -55,29 +54,7 @@ impl DraftPost {
     pub fn from_grow_draft_file(draft_path: &PathBuf) -> Result<DraftPost, Error> {
         let draft_content = fs::read_to_string(draft_path).map_err(Error::ReadDraft)?;
 
-        DraftPost::from_grow_draft_string(&draft_content)
-    }
-
-    /// Возвращает `DraftPost` на основе строки `draft_string`.
-    ///
-    /// # Errors
-    ///
-    /// Вернет `Error` если ключ или значение не может быть десериализовано.
-    /// Доступные поля `title`, `description`,`keywords`, `lang`, `content`
-    pub fn from_grow_draft_string(draft_string: &str) -> Result<DraftPost, Error> {
-        let mut draft_post = DraftPost::new();
-        for (key, value) in deserialize(draft_string)? {
-            match key {
-                "title" => draft_post.title(value)?,
-                "description" => draft_post.description(value)?,
-                "keywords" => draft_post.keywords_as_str(value, KEYWORDS_DELIMITER)?,
-                "lang" => draft_post.lang(Lang::from_str(value).map_err(Error::UnknownLang)?),
-                "content" => draft_post.content(value)?,
-                key => return Err(Error::UnknownKey(key.to_string())),
-            };
-        }
-
-        Ok(draft_post)
+        deserialize_to_draft_post(&draft_content)
     }
 
     /// Задает, очищает от пробелов и проверяет корректность заголовка записи.
@@ -237,8 +214,7 @@ keywords: [keywords]
     };
 
     use crate::command::Error::ValueTooLong;
-    use crate::grow::draft_post::DraftPost;
-    use crate::grow::serdes::process_template;
+    use crate::grow::serdes::{deserialize_to_draft_post, process_template};
     use chrono::Utc;
     use std::collections::HashMap;
 
@@ -281,9 +257,9 @@ keywords: [keywords]
 
     #[test]
     fn test_draft_from_string_conversion_with_default_values() {
-        let draft_string = generate_test_draft_string(TestDraftPost::default());
+        let draft_content = generate_test_draft_string(TestDraftPost::default());
 
-        let draft_post = DraftPost::from_grow_draft_string(&draft_string).unwrap();
+        let draft_post = deserialize_to_draft_post(&draft_content).unwrap();
 
         assert_eq!(TEST_DRAFT_TITLE, draft_post.title);
         assert_eq!(TEST_CONTENT, draft_post.content);
@@ -304,8 +280,8 @@ keywords: [keywords]
             title: Option::from(many_chars_in_title.unwrap()),
             ..TestDraftPost::default()
         };
-        let draft_string = generate_test_draft_string(test_draft_post);
-        let result = DraftPost::from_grow_draft_string(&draft_string);
+        let draft_content = generate_test_draft_string(test_draft_post);
+        let result = deserialize_to_draft_post(&draft_content);
         assert_eq!(
             ValueTooLong("title".to_string(), MAX_CHARS_IN_TITLE),
             result.err().unwrap()
@@ -319,8 +295,8 @@ keywords: [keywords]
             description: Option::from(many_chars_in_description.unwrap()),
             ..TestDraftPost::default()
         };
-        let draft_string = generate_test_draft_string(test_draft_post);
-        let result = DraftPost::from_grow_draft_string(&draft_string);
+        let draft_content = generate_test_draft_string(test_draft_post);
+        let result = deserialize_to_draft_post(&draft_content);
         assert_eq!(
             ValueTooLong("description".to_string(), MAX_CHARS_IN_DESCRIPTION),
             result.err().unwrap()
@@ -330,7 +306,7 @@ keywords: [keywords]
     #[test]
     fn test_draft_to_post_conversion() {
         let draft_string = generate_test_draft_string(TestDraftPost::default());
-        let draft_post = DraftPost::from_grow_draft_string(&draft_string).unwrap();
+        let draft_post = deserialize_to_draft_post(&draft_string).unwrap();
         let post = draft_post.approve();
 
         assert_eq!(TEST_SLUG, post.slug);

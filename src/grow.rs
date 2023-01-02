@@ -21,7 +21,7 @@ const LF: char = '\n';
 
 const MAX_CHARS_IN_DESCRIPTION: usize = 255;
 const MAX_CHARS_IN_TITLE: usize = 75;
-const MAX_KEYWORDS_COUNT: usize = 75;
+const MAX_KEYWORDS_COUNT: usize = 10;
 
 // tests
 pub const TEST_POST_TITLE: &str = "Это тестовый заголовок";

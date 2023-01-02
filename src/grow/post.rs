@@ -24,6 +24,12 @@ pub struct Post {
     pub draft_content: String,
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub struct PublishedPost {
+    pub path: PostPath,
+    pub translation_path: TranslationPath,
+}
+
 impl Post {
     /// Публикует `Post` по путям `posts_path` (запись) и `translation_path`(перевод).
     ///
@@ -35,13 +41,13 @@ impl Post {
         &self,
         posts_path: &PostPath,
         translation_path: &TranslationPath,
-    ) -> Result<(PostPath, TranslationPath), Error> {
+    ) -> Result<PublishedPost, Error> {
         let post_file_name = self.build_file_name(posts_path);
         let content = self.build_content();
         let translation = &self.build_translation();
 
         // Запись и перевод
-        let write_files = || -> Result<(PostPath, TranslationPath), Error> {
+        let write_files = || -> Result<PublishedPost, Error> {
             fs::write(&post_file_name, &content).map_err(Error::WritePost)?;
 
             let mut f = File::options()
@@ -52,9 +58,10 @@ impl Post {
             f.write_all(translation.as_bytes())
                 .map_err(Error::WritePost)?;
 
-            let published_post_path = PostPath::from(posts_path).join(&post_file_name);
-
-            Ok((published_post_path, TranslationPath::from(translation_path)))
+            Ok(PublishedPost {
+                path: PostPath::from(posts_path).join(&post_file_name),
+                translation_path: TranslationPath::from(translation_path),
+            })
         };
 
         write_files()
@@ -76,7 +83,7 @@ impl Post {
 
     fn build_translation(&self) -> String {
         process_template(
-            TRANSLATION_TEMPLATE.to_owned(),
+            TRANSLATION_TEMPLATE.to_string(),
             HashMap::from([("id", self.slug.clone()), ("value", self.title.clone())]),
         )
     }
