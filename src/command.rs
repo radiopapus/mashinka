@@ -31,7 +31,7 @@ pub enum Error {
     // deserializer
     #[error("Have no clue how process about {0} key")]
     UnknownKey(String),
-    #[error("Have no clue hpt to process {0} language value")]
+    #[error("Have no clue how to process {0} language value")]
     UnknownLang(String),
     #[error("Can't read file {0}")]
     ReadDraft(std::io::Error),
