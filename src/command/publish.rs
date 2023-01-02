@@ -34,15 +34,18 @@ impl Command for Publish {
             return Ok(CommandResult { command, details });
         }
 
-        let (post_path, translation_path) = post.publish(
+        let published_post = post.publish(
             &self.config.get_posts_path_or_default(post.lang)?,
             &self.config.get_translation_path_or_default(post.lang)?,
         )?;
 
-        details.insert(String::from("post_path"), format!("{:?}", post_path));
+        details.insert(
+            String::from("post_path"),
+            format!("{:?}", published_post.path),
+        );
         details.insert(
             String::from("translation_path"),
-            format!("{:?}", translation_path),
+            format!("{:?}", published_post.translation_path),
         );
 
         Ok(CommandResult { command, details })

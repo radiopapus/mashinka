@@ -16,21 +16,22 @@ pub const INDEX_COMMAND_NAME: &str = "index";
 pub const PUBLISH_COMMAND_NAME: &str = "publish";
 pub const HELP_COMMAND_NAME: &str = "help";
 
+/// Список ошибок
 #[derive(Error, Debug)]
 pub enum Error {
     // config
     #[error("Check parameter format, please. Should be --param-name or --param-name=value")]
     Parse(),
-    #[error("Value for {0} should not be empty")]
+    #[error("Value for {0} should be filled (not empty)")]
     EmptyValue(String),
-    #[error("Value for {0} are too long {1}")]
+    #[error("Value for {0} is too long. Expected less than {1}")]
     ValueTooLong(String, usize),
     #[error("Env variable error")]
     EnvVar(#[from] env::VarError),
     // deserializer
-    #[error("Have no clue about {0} key")]
+    #[error("Have no clue how process about {0} key")]
     UnknownKey(String),
-    #[error("Have no clue about {0} language value")]
+    #[error("Have no clue hpt to process {0} language value")]
     UnknownLang(String),
     #[error("Can't read file {0}")]
     ReadDraft(std::io::Error),
