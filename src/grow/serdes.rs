@@ -7,6 +7,7 @@ use crate::grow::{
     ISO8601_DATE_TIME_FORMAT, KEYWORDS_DELIMITER, KEY_VALUE_DELIMITER, LF, META_DELIMITER,
 };
 
+///
 /// Преобразует строку в `DraftPost`. Строка должна удовлетворять формату grow записи. Например:
 /// key: value
 ///---

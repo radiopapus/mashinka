@@ -25,9 +25,8 @@ pub enum Error {
     EmptyValue(String),
     #[error("Value for {0} are too long {1}")]
     ValueTooLong(String, usize),
-    #[error("test")]
+    #[error("Env variable error")]
     EnvVar(#[from] env::VarError),
-
     // deserializer
     #[error("Have no clue about {0} key")]
     UnknownKey(String),
@@ -39,14 +38,6 @@ pub enum Error {
     WritePost(std::io::Error),
     #[error("Incorrect format. {0}")]
     IncorrectFormat(String),
-    //Disconnect(#[from] io::Error),
-    // #[error("the data for key `{0}` is not available")]
-    // Redaction(String),
-    // #[error("invalid header (expected {expected:?}, found {found:?})")]
-    // InvalidHeader {
-    //     expected: String,
-    //     found: String,
-    // }
 }
 
 impl PartialEq for Error {
