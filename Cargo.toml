@@ -8,6 +8,11 @@ edition = "2021"
 dotenv = "0.15.0"
 chrono = "0.4.23"
 slug = "0.1.4"
+thiserror = "1.0.38"
+
+[dev-dependencies]
+assert_fs = "1.0.10"
+test_bin = "0.4.0"
 
 # structopt ?
 # color ?

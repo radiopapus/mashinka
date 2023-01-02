@@ -1,32 +1,74 @@
-mod post;
-mod draft_post;
-mod lang;
+#![allow(dead_code)]
 
-const DEFAULT_AUTHOR: &str = "Viktor Zharina";
-const ISO8601_DATE_TIME_FORMAT: &str = "%Y-%m-%d %H:%M:%S";
-const ISO8601_DATE_FORMAT: &str = "%Y-%m-%d";
+pub mod draft_post;
+pub mod lang;
+pub mod post;
+pub mod serdes;
+
+pub const DEFAULT_AUTHOR: &str = "Виктор Жарина";
+pub const DEFAULT_AUTHOR_EN: &str = "Viktor Zharina";
+
+pub const POST_TEMPLATE: &str = include_str!("grow/templates/post.tpl");
+pub const TRANSLATION_TEMPLATE: &str = include_str!("grow/templates/translation.tpl");
+
+pub const ISO8601_DATE_TIME_FORMAT: &str = "%Y-%m-%d %H:%M:%S";
+pub const ISO8601_DATE_FORMAT: &str = "%Y-%m-%d";
 
 const META_DELIMITER: &str = "---";
 const KEY_VALUE_DELIMITER: char = ':';
-const KEYWORDS_DELIMITER: char = ',';
+const KEYWORDS_DELIMITER: &str = ",";
 const LF: char = '\n';
 
 const MAX_CHARS_IN_DESCRIPTION: usize = 255;
 const MAX_CHARS_IN_TITLE: usize = 75;
+const MAX_KEYWORDS_COUNT: usize = 75;
 
-// test
-const TEST_DRAFT_TITLE: &str = "Перевод - Почему бумага формата А4 имеет размер 297 мм на 210 мм?";
+// tests
+pub const TEST_POST_TITLE: &str = "Это тестовый заголовок";
+pub const TEST_AUTHOR: &str = "Виктор Жарина";
+pub const TEST_DESCRIPTION: &str = "Тестовое описание для записи";
+pub const TEST_SLUG: &str = "eto-testovyi-zagolovok";
+pub const TEST_IMAGE: &str = "/static/images/default.png";
+pub const TEST_KEYWORDS_AS_STRING: &str = "бумага,А4,297 мм";
+pub const TEST_LANG_AS_STRING: &str = "ru";
+pub const TEST_CONTENT: &str = "test_content";
 
-const TEST_DESCRIPTION: &str = "Тестовое описание для записи";
-const TEST_SLUG: &str = "perevod-pochemu-bumaga-formata-a4-imeet-razmer-297-mm-na-210-mm";
+pub const TEST_DRAFT_TITLE: &str = "Это тестовый заголовок";
+pub const TEST_DRAFT_TEMPLATE: &str = r#"
+title: [title]
+lang: [lang]
+description: [description]
+keywords: [keywords]
+---
 
-// Заголовок записи это идентификатор для переводчика, он не равен TEST_DRAFT_TITLE, но равен slug
-const TEST_POST_TITLE: &str = TEST_SLUG;
+[content]
+"#;
 
-const TEST_KEYWORDS_AS_STRING: &str = "бумага,А4,297 мм";
-const TEST_LANG_AS_STRING: &str = "ru";
-const TEST_CONTENT: &str = "_Вкратце: размер листа А0 равен 1 189 мм на 841 мм (1 м<sup>2</sup>). Площадь 1 м<sup>2</sup>
-скорее всего выбрана из-за удобства измерения и расчетов. Сотношение сторон примерно равно sqrt2 (1.41) и
-выбрано не случайно. Это дает возможность получать листы меньшего размера, сохраняя соотношение сторон.
-Таким образом, <i>чтобы получить из листа формата</i> А0 лист формата А4 нужно свернуть лист 4 раза.
- Вот и получается 1 189 / 4 = 297.25, что примерно равно 297 мм._";
+pub const TEST_DRAFT_CONTENT: &str = r#"
+title: Это тестовый заголовок
+lang: ru
+description: Тестовое описание для записи
+keywords: бумага,А4,297 мм
+---
+
+test_content
+"#;
+
+pub const TEST_POST_CONTENT_TEMPLATE: &str = r#"---
+$title@: [slug]
+author@: [author]
+description: [description]
+keywords: [keywords]
+image: [image]
+slug[lang]: [slug]
+$dates:
+  published: [publish_date]
+---
+[content]"#;
+
+pub const TEST_TRANSLATION_TEMPLATE: &str = r#"
+
+msgid "[id]"
+msgstr "[value]"
+
+"#;

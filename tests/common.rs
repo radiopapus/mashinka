@@ -1,3 +1,1 @@
-pub fn setup() {
-    // setup code specific to your library's tests would go here
-}
+pub const BIN_NAME: &str = "mashinka";
