@@ -29,8 +29,6 @@ impl Command for Publish {
 
         let command = PUBLISH_COMMAND_NAME.to_string();
 
-        // todo implement Collection of Detail items
-        // let mut details: HashMap<String, String> = HashMap::new();
         let mut details = Details::new();
 
         // grow запись

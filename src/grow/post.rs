@@ -18,18 +18,15 @@ pub trait PostContent<B> {
 }
 
 impl PostContent<DraftPostBuilder> for DraftPost {
-    /// Создает черновик.
     fn new() -> Self {
         DraftPost::default()
     }
-    /// Создает builder.
     fn builder() -> DraftPostBuilder {
         DraftPostBuilder::new()
     }
 }
 
 impl PostContent<GrowPostBuilder> for GrowPost {
-    /// Создает опубликованный grow пост.
     fn new() -> Self {
         GrowPost::default()
     }
@@ -53,6 +50,8 @@ pub struct DraftPost {
     pub text: String,
 }
 
+/// В Rust миллиард всяких трейтов, которые можно реализовать для вашего типа. Здесь преобразуем
+/// DraftPost в строку согласно шаблону.
 impl ToString for DraftPost {
     fn to_string(&self) -> String {
         process_template(DRAFT_TEMPLATE.to_string(), self.as_hashmap())

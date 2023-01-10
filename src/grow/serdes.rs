@@ -39,6 +39,7 @@ fn parse_meta_into_map(content: String) -> Result<HashMap<String, String>, Error
     for line in meta_lines {
         let (parameter_name, parameter_value) = split_key_value(&line, KEY_VALUE_DELIMITER)?;
 
+        // пропускаем варианты вроде dates: и другие некорректные варианты. Интересует только key:value формат.
         if parameter_name.is_empty() || parameter_value.is_empty() {
             continue
         }
