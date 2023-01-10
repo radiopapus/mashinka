@@ -6,6 +6,6 @@ keywords: [keywords]
 image: [image]
 slug[lang]: [slug]
 $dates:
-  published: [publish_date]
+  published: [published]
 ---
-[content]
+[text]

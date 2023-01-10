@@ -1,7 +1,6 @@
 #![allow(clippy::must_use_candidate)]
 
-use crate::command::{Command, CommandResult, Error, HELP_COMMAND_NAME};
-use std::collections::HashMap;
+use crate::command::{Command, CommandResult, Details, Error, HELP_COMMAND_NAME};
 
 pub struct Help;
 
@@ -15,7 +14,7 @@ impl Command for Help {
     fn run(&self) -> Result<CommandResult, Error> {
         Ok(CommandResult {
             command: HELP_COMMAND_NAME.to_string(),
-            details: HashMap::new(),
+            details: Details::new()
         })
     }
 }

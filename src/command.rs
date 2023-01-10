@@ -4,8 +4,8 @@
 use crate::command::help::Help;
 use crate::command::publish::Publish;
 use crate::config::Config;
-use std::collections::HashMap;
 use std::env;
+use chrono::ParseError;
 use thiserror::Error;
 
 pub mod help;
@@ -22,6 +22,8 @@ pub enum Error {
     // config
     #[error("Check parameter format, please. Should be --param-name or --param-name=value")]
     Parse(),
+    #[error("Check date time format `{0}`")]
+    DateTimeError(ParseError),
     #[error("Value for {0} should be filled (not empty)")]
     EmptyValue(String),
     #[error("Value for {0} is too long. Expected less than {1}")]
@@ -34,11 +36,11 @@ pub enum Error {
     #[error("Have no clue how to process {0} language value")]
     UnknownLang(String),
     #[error("Can't read file {0}")]
-    ReadDraft(std::io::Error),
+    ReadFile(std::io::Error),
     #[error("Can't write file {0}")]
-    WritePost(std::io::Error),
+    WriteFile(std::io::Error),
     #[error("Incorrect format. {0}")]
-    IncorrectFormat(String),
+    IncorrectFormat(String)
 }
 
 impl PartialEq for Error {
@@ -54,10 +56,37 @@ pub trait Command {
     fn run(&self) -> Result<CommandResult, Error>;
 }
 
+#[derive(Debug, Default)]
+struct Detail {
+    id: String,
+    message: String
+}
+
+#[derive(Debug, Default)]
+pub struct Details {
+    items: Vec<Detail>
+}
+
+impl Details {
+    fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.items.is_empty()
+    }
+
+    fn push(&mut self, id: String, message: String) {
+        self.items.push(Detail{
+            id, message
+        })
+    }
+}
+
 /// Результат выполнения команды
 pub struct CommandResult {
     command: String,
-    details: HashMap<String, String>,
+    details: Details,
 }
 
 impl CommandResult {
@@ -68,10 +97,7 @@ impl CommandResult {
             format!("Details: {:#?}", self.details)
         };
 
-        format!(
-            "Command `{}` successfully completed. {}",
-            self.command, details
-        )
+        format!("Command `{}` successfully completed. {}", self.command, details)
     }
 }
 
@@ -98,14 +124,13 @@ pub fn run(mut args: impl Iterator<Item = String>) -> Result<CommandResult, Erro
 
 #[cfg(test)]
 mod tests {
-    use crate::command::{run, CommandResult, HELP_COMMAND_NAME};
-    use std::collections::HashMap;
+    use crate::command::{run, CommandResult, HELP_COMMAND_NAME, Details};
 
     #[test]
     fn test_run_command() {
         let mut expected_command_result = CommandResult {
             command: HELP_COMMAND_NAME.to_string(),
-            details: HashMap::new(),
+            details: Details::new(),
         };
 
         let mut result = run([HELP_COMMAND_NAME.to_string()].into_iter()).unwrap();
