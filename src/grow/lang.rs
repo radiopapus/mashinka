@@ -9,6 +9,12 @@ pub enum Lang {
     En,
 }
 
+impl Default for Lang {
+    fn default() -> Self {
+        Lang::Ru
+    }
+}
+
 impl Display for Lang {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {

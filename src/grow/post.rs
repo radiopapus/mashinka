@@ -1,170 +1,320 @@
+#![allow(clippy::must_use_candidate)]
+
+use std::collections::HashMap;
 use crate::command::Error;
 use crate::grow::lang::Lang;
-use crate::grow::serdes::{process_template, serialize_with_template};
-use crate::grow::{ISO8601_DATE_FORMAT, POST_TEMPLATE, TRANSLATION_TEMPLATE};
+use crate::grow::serdes::{process_template};
+use crate::grow::{AUTHOR_FIELD_NAME, DEFAULT_AUTHOR, DEFAULT_AUTHOR_EN, DESCRIPTION_FIELD_NAME, DRAFT_TEMPLATE, IMAGE_FIELD_NAME, ISO8601_DATE_FORMAT, ISO8601_DATE_TIME_FORMAT, KEYWORDS_DELIMITER, KEYWORDS_FIELD_NAME, LANGUAGE_FIELD_NAME, POST_TEMPLATE, PUBLISHED_DATE_FIELD_NAME, SLUG_FIELD_NAME, TEXT_FIELD_NAME, TITLE_FIELD_NAME, TRANSLATION_TEMPLATE};
 use chrono::{DateTime, Utc};
-use std::collections::HashMap;
-use std::fs;
 use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
+use slug::slugify;
+use crate::grow::builder::{BasePostBuilder, DraftPostBuilder, GrowPostBuilder, PostBuilder};
 
-type PostPath = PathBuf;
-type TranslationPath = PathBuf;
+pub trait PostContent<B> {
+    fn new() -> Self;
+    fn builder() -> B where B: PostBuilder;
+}
 
-#[derive(Debug, PartialEq, Eq)]
-pub struct Post {
+impl PostContent<DraftPostBuilder> for DraftPost {
+    /// Создает черновик.
+    fn new() -> Self {
+        DraftPost::default()
+    }
+    /// Создает builder.
+    fn builder() -> DraftPostBuilder {
+        DraftPostBuilder::new()
+    }
+}
+
+impl PostContent<GrowPostBuilder> for GrowPost {
+    /// Создает опубликованный grow пост.
+    fn new() -> Self {
+        GrowPost::default()
+    }
+    fn builder() -> GrowPostBuilder {
+        GrowPostBuilder::new()
+    }
+}
+
+/// Структура для черновика записи. В дальнейшем черновик может быть опубликован (превращен в Post)
+#[derive(Debug, PartialEq, Eq, Default)]
+pub struct DraftPost {
+    /// Заголовок на языке текста.
+    pub title: String,
+    /// Описание записи
+    pub description: String,
+    /// Ключевые слова записи
+    pub keywords: Vec<String>,
+    /// Язык записи
+    pub lang: Lang,
+    /// Текст записи
+    pub text: String,
+}
+
+impl ToString for DraftPost {
+    fn to_string(&self) -> String {
+        process_template(DRAFT_TEMPLATE.to_string(), self.as_hashmap())
+    }
+}
+
+impl DraftPost {
+    fn as_hashmap(&self) -> HashMap<&str, String> {
+        HashMap::from([
+            (TITLE_FIELD_NAME, self.title.clone()),
+            (DESCRIPTION_FIELD_NAME, self.description.clone()),
+            (LANGUAGE_FIELD_NAME, self.lang.to_string()),
+            (TEXT_FIELD_NAME, self.text.clone()),
+            (KEYWORDS_FIELD_NAME, self.keywords.join(KEYWORDS_DELIMITER)),
+        ]).into_iter().collect()
+    }
+
+    /// Помечает черновик как готовый для публикации.
+    /// Технически преобразует структуру `DraftPost` в `ApprovedPost`.
+    pub fn approve(&self) -> ApprovedPost {
+        // Результат "slug" состоит из символов a-z, 0-9 и '-'.
+        // Никогда не содержит более одного '-' и не начинается с '-'.
+        // see slugify implementation for details.
+        let slug = slugify(&self.title);
+
+        let author = if self.lang != Lang::Ru { DEFAULT_AUTHOR_EN } else { DEFAULT_AUTHOR };
+
+        ApprovedPost {
+            title: self.title.clone(),
+            author: author.to_string(),
+            slug,
+            description: self.description.clone(),
+            keywords: self.keywords.clone(),
+            lang: self.lang,
+            text: self.text.clone(),
+        }
+    }
+}
+
+#[derive(Default, Debug, PartialEq, Eq)]
+pub struct ApprovedPost {
     pub title: String,
     pub author: String,
     pub description: String,
     pub keywords: Vec<String>,
     pub lang: Lang,
-    pub published_date_time: DateTime<Utc>,
     pub slug: String,
-    pub draft_content: String,
+    pub text: String,
 }
 
-#[derive(Debug, PartialEq, Eq)]
-pub struct PublishedPost {
-    pub path: PostPath,
-    pub translation_path: TranslationPath,
+#[derive(Debug, PartialEq, Eq, Default, Clone)]
+pub struct GrowPost {
+    pub title: String,
+    pub author: String,
+    pub description: String,
+    pub keywords: Vec<String>,
+    pub lang: Lang,
+    pub published_at: DateTime<Utc>,
+    pub slug: String,
+    pub text: String,
 }
 
-impl Post {
+impl GrowPost {
+    fn as_hashmap(&self) -> HashMap<&str, String> {
+        HashMap::from([
+            (TITLE_FIELD_NAME, self.title.clone()),
+            (AUTHOR_FIELD_NAME, self.author.clone(), ),
+            (DESCRIPTION_FIELD_NAME, self.description.clone(), ),
+            (IMAGE_FIELD_NAME, "/static/images/default.png".to_string()),
+            (LANGUAGE_FIELD_NAME, self.lang.to_string()),
+            (SLUG_FIELD_NAME, self.slug.clone()),
+            (TEXT_FIELD_NAME, self.text.clone()),
+            (PUBLISHED_DATE_FIELD_NAME, self.published_at.format(ISO8601_DATE_TIME_FORMAT).to_string()),
+            (KEYWORDS_FIELD_NAME, self.keywords.join(KEYWORDS_DELIMITER)),
+        ]).into_iter().collect()
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Default, Clone)]
+pub struct GrowPostTranslation {
+    pub lang: Lang,
+    pub id: String,
+    pub translated_value: String,
+}
+
+impl GrowPostTranslation {
+    fn new() -> Self {
+        Self::default()
+    }
+}
+
+/// Преобразует GrowPostTranslation в форматированную строку для переводов.
+/// title здесь это идентификатор - slug, который будет использован для системы перевода
+impl ToString for GrowPostTranslation {
+    fn to_string(&self) -> String {
+        process_template(TRANSLATION_TEMPLATE.to_string(),
+            HashMap::from([("id", self.id.to_string()), ("value", self.translated_value.to_string())]),
+        )
+    }
+}
+
+/// Преобразует строку в `GrowPost`. Строка должна удовлетворять формату grow записи. Например:
+/// key: value
+///---
+/// content
+///
+/// # Errors
+/// Вернет Error при десериализации данных. Meta данные должны быть разделены `META_DELIMITER`, а meta
+/// ключ-значение разделены `KEY_VALUE_DELIMITER`.
+/// Доступные поля `title`, `description`,`keywords`, `lang`, `content`
+
+impl ToString for GrowPost {
+    fn to_string(&self) -> String {
+        process_template(POST_TEMPLATE.to_string(), self.as_hashmap())
+    }
+}
+
+pub struct WriterWrapper {}
+
+impl WriterWrapper {
+    fn _write_to_file(file: &PathBuf, append: bool, file_content: &String) -> Result<(), Error> {
+        let mut f = File::options()
+            .append(append)
+            .create(true)
+            .write(true)
+            .open(file)
+            .map_err(Error::WriteFile)?;
+        f.write_all(file_content.as_bytes())
+            .map_err(Error::WriteFile)?;
+        Ok(())
+    }
+
+    pub fn write_file(file: &PathBuf, content: &String) -> Result<(), Error> {
+        Self::_write_to_file(file, false, content)
+    }
+
+    pub fn write_file_with_append(file: &PathBuf, content: &String) -> Result<(), Error> {
+        Self::_write_to_file(file, true, content)
+    }
+}
+
+impl GrowPost {
+    pub fn build_post_path(&self, posts_path: &Path) -> PathBuf {
+        let published_at = self.published_at.format(ISO8601_DATE_FORMAT).to_string();
+        let slug = self.slug.clone();
+        let lang = self.lang.to_lowercase();
+        posts_path.join(format!("{published_at}-{slug}@{lang}.md"))
+    }
+}
+
+impl ApprovedPost {
+    ///
     /// Публикует `Post` по путям `posts_path` (запись) и `translation_path`(перевод).
-    ///
-    ///
     /// # Errors
     ///
     /// Вернет `Error` при записи файлов возникнут проблемы.
-    pub fn publish(
-        &self,
-        posts_path: &PostPath,
-        translation_path: &TranslationPath,
-    ) -> Result<PublishedPost, Error> {
-        let post_file_name = self.build_file_name(posts_path);
-        let content = self.build_content();
-        let translation = &self.build_translation();
-
-        // Запись и перевод
-        let write_files = || -> Result<PublishedPost, Error> {
-            fs::write(&post_file_name, &content).map_err(Error::WritePost)?;
-
-            let mut f = File::options()
-                .append(true)
-                .open(translation_path)
-                .map_err(Error::WritePost)?;
-
-            f.write_all(translation.as_bytes())
-                .map_err(Error::WritePost)?;
-
-            Ok(PublishedPost {
-                path: PostPath::from(posts_path).join(&post_file_name),
-                translation_path: TranslationPath::from(translation_path),
-            })
-        };
-
-        write_files()
-    }
-
-    fn build_content(&self) -> String {
-        serialize_with_template(self, POST_TEMPLATE.to_string())
-    }
-
-    fn build_file_name(&self, posts_path: &Path) -> String {
-        let lang = self.lang.to_lowercase();
-        let posts_path = posts_path.to_str().unwrap();
-        format!(
-            "{posts_path}/{}-{}@{lang}.md",
-            self.published_date_time.format(ISO8601_DATE_FORMAT),
-            self.slug,
-        )
-    }
-
-    fn build_translation(&self) -> String {
-        process_template(
-            TRANSLATION_TEMPLATE.to_string(),
-            HashMap::from([("id", self.slug.clone()), ("value", self.title.clone())]),
+    pub fn to_grow_post(&self) -> Result<GrowPost, Error> {
+        Ok(GrowPostBuilder::new()
+            .title(self.title.clone())?
+            .description(self.description.clone())?
+            .author(self.author.clone())?
+            .keywords(self.keywords.clone())?
+            .lang(self.lang)?
+            .published_at(Utc::now())?
+            .slug(self.slug.clone())?
+            .text(self.text.clone())?
+            .build()
         )
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use crate::grow::lang::Lang;
-    use crate::grow::post::Post;
-    use crate::grow::{
-        DEFAULT_AUTHOR, ISO8601_DATE_FORMAT, TEST_CONTENT, TEST_DESCRIPTION, TEST_DRAFT_TITLE,
-        TEST_SLUG,
-    };
-    use chrono::{DateTime, Utc};
 
-    fn generate_fake_post(predefined_date_time: &DateTime<Utc>) -> Post {
-        Post {
-            title: String::from(TEST_DRAFT_TITLE),
-            author: String::from(DEFAULT_AUTHOR),
-            description: String::from(TEST_DESCRIPTION),
-            lang: Lang::Ru,
-            slug: String::from(TEST_SLUG),
-            keywords: vec!["бумага".to_string(), "А4".to_string(), "297 мм".to_string()],
-            published_date_time: *predefined_date_time,
-            draft_content: String::from(TEST_CONTENT),
-        }
+#[cfg(test)]
+#[allow(clippy::or_fun_call)]
+mod tests {
+    use crate::grow::{MAX_CHARS_IN_DESCRIPTION, MAX_CHARS_IN_TITLE};
+    use crate::grow::serdes::{GrowDeserializer};
+    use crate::command::Error::ValueTooLong;
+    use crate::grow::post::{DraftPost, GrowPost};
+
+    #[test]
+    fn test_draft_from_string_conversion_with_default_values() {
+        let default_draft = DraftPost {
+            text: "text".to_string(),
+            ..DraftPost::default()
+        };
+
+        // let DraftPost {text, title, ..} = default_draft;
+
+        let draft_post = DraftPost::deserialize(&default_draft.to_string()).unwrap();
+
+        assert_eq!(default_draft.title, draft_post.title);
+        assert_eq!(default_draft.text, draft_post.text);
+        assert_eq!(default_draft.description, draft_post.description);
+        assert_eq!(default_draft.keywords, draft_post.keywords);
+        assert_eq!(default_draft.lang, draft_post.lang);
     }
 
     #[test]
-    fn test_post_to_string() {
-        let predefined_date_time = Utc::now();
-        let post = generate_fake_post(&predefined_date_time);
+    fn fail_draft_from_string_conversion_when_title_out_of_limit() {
+        let too_many_chars_in_title = String::from_utf8(vec![b'X'; MAX_CHARS_IN_TITLE + 1]);
+        let draft_content = DraftPost {
+            title: too_many_chars_in_title.unwrap(),
+            text: "test_text".to_string(),
+            ..DraftPost::default()
+        };
 
-        let grow_post_as_string = post.build_content();
-        assert!(!grow_post_as_string.is_empty());
+        let result = DraftPost::deserialize(&draft_content.to_string());
+        assert_eq!(
+            ValueTooLong("title".to_string(), MAX_CHARS_IN_TITLE),
+            result.err().unwrap()
+        )
+    }
 
-        dbg!(&grow_post_as_string);
+    #[test]
+    fn fail_draft_from_string_conversion_when_description_out_of_limit() {
+        let too_many_chars_in_description = String::from_utf8(vec![b'X'; MAX_CHARS_IN_DESCRIPTION + 1]);
+        let draft_content = DraftPost {
+            description: too_many_chars_in_description.unwrap(),
+            text: "test_text".to_string(),
+            ..DraftPost::default()
+        };
+        let result = DraftPost::deserialize(&draft_content.to_string());
+        assert_eq!(
+            ValueTooLong("description".to_string(), MAX_CHARS_IN_DESCRIPTION),
+            result.err().unwrap()
+        )
+    }
 
-        // title это slug идентификатор для системы перевода. title из post будет использован в переводе
-        let expected_title_is_slug = format!("${}@: {}", "title", &post.slug);
-        assert!(
-            grow_post_as_string.contains(&expected_title_is_slug),
-            "exp = {}",
-            expected_title_is_slug
-        );
+    #[test]
+    fn test_draft_to_approved_post_conversion() {
+        let default_draft = DraftPost {
+            text: "txt".to_string(),
+            ..DraftPost::default()
+        };
+        let draft_post = DraftPost::deserialize(&default_draft.to_string()).unwrap();
 
-        let expected_author = format!("{}@: {}", "author", &post.author);
-        assert!(
-            grow_post_as_string.contains(&expected_author),
-            "exp = {}",
-            expected_author
-        );
+        let approved_post = draft_post.approve();
 
-        let expected_description = format!("{}: {}", "description", &post.description);
-        assert!(
-            grow_post_as_string.contains(&expected_description),
-            "exp = {}",
-            expected_description
-        );
+        assert_eq!(draft_post.title, approved_post.title);
+        assert_eq!(draft_post.description, approved_post.description);
+        assert_eq!(draft_post.keywords, approved_post.keywords);
+        assert_eq!(draft_post.text, approved_post.text);
+        assert_eq!(draft_post.lang, approved_post.lang);
+    }
 
-        let expected_slug = format!("slug{}: {}", &post.lang, &post.slug);
-        assert!(
-            grow_post_as_string.contains(&expected_slug),
-            "exp = {}",
-            expected_slug
-        );
+    #[test]
+    fn test_grow_from_string_conversion_with_default_values() {
+        let default_grow_post = GrowPost {
+            text: "text".to_string(),
+            author: "Author".to_string(),
+            ..GrowPost::default()
+        };
 
-        let formatted_naive_date_time = predefined_date_time.format(ISO8601_DATE_FORMAT);
+        let grow_post = GrowPost::deserialize(&default_grow_post.to_string()).unwrap();
 
-        let expected_publish_date = format!("$dates:\n  published: {}", &formatted_naive_date_time);
-        assert!(
-            grow_post_as_string.contains(&expected_publish_date),
-            "exp = {}",
-            expected_publish_date
-        );
-
-        let expected_content = &post.build_content();
-        assert!(
-            grow_post_as_string.contains(expected_content),
-            "exp = {}",
-            expected_content
-        );
+        assert_eq!(default_grow_post.title, grow_post.title);
+        assert_eq!(default_grow_post.text, grow_post.text);
+        assert_eq!(default_grow_post.description, grow_post.description);
+        assert_eq!(default_grow_post.keywords, grow_post.keywords);
+        assert_eq!(default_grow_post.lang, grow_post.lang);
+        assert_eq!(default_grow_post.author, grow_post.author);
+        assert_eq!(default_grow_post.slug, grow_post.slug);
     }
 }

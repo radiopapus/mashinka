@@ -1,87 +1,78 @@
 #![allow(clippy::must_use_candidate)]
-use crate::command::Error;
-use crate::grow::post::Post;
+#![allow(clippy::or_fun_call)]
+
+use crate::grow::post::{DraftPost, GrowPost, PostContent};
+use crate::grow::{KEY_VALUE_DELIMITER, LF, META_DELIMITER, TEXT_FIELD_NAME};
 use std::collections::HashMap;
-use std::str::FromStr;
+use crate::command::Error;
+use crate::grow::builder::{BasePostBuilder};
 
-use crate::grow::draft_post::DraftPost;
-use crate::grow::lang::Lang;
-use crate::grow::{
-    ISO8601_DATE_TIME_FORMAT, KEYWORDS_DELIMITER, KEY_VALUE_DELIMITER, LF, META_DELIMITER,
-};
-
-///
-/// Возвращает `DraftPost` на основе строки `draft_string`.
-///
-/// # Errors
-/// Преобразует строку в `DraftPost`. Строка должна удовлетворять формату grow записи. Например:
-/// key: value
-///---
-/// content
-///
-/// Вернет Error при десериализации данных. Meta данные должны быть разделены `META_DELIMITER`, а meta
-/// ключ-значение разделены `KEY_VALUE_DELIMITER`.
-/// Доступные поля `title`, `description`,`keywords`, `lang`, `content`
-pub fn deserialize_to_draft_post(draft_content: &str) -> Result<DraftPost, Error> {
-    let (meta, content) = draft_content
-        .trim()
-        .split_once(META_DELIMITER)
-        .ok_or_else(|| {
-            Error::IncorrectFormat(format!(
-                "Meta and content should be delimited by {}",
-                META_DELIMITER
-            ))
-        })?;
-
-    let meta_lines: Vec<&str> = meta.trim().split(LF).collect();
-
-    let mut draft_post = DraftPost::new();
-
-    for line in meta_lines {
-        let (key, value) = line.split_once(KEY_VALUE_DELIMITER).ok_or_else(|| {
-            Error::IncorrectFormat(format!(
-                "Meta key value should be delimited by {}",
-                KEY_VALUE_DELIMITER
-            ))
-        })?;
-
-        match key {
-            "title" => draft_post.title(value)?,
-            "description" => draft_post.description(value)?,
-            "keywords" => draft_post.keywords_as_str(value, KEYWORDS_DELIMITER)?,
-            "lang" => draft_post.lang(Lang::from_str(value).map_err(Error::UnknownLang)?),
-            key => return Err(Error::UnknownKey(key.to_string())),
-        };
-    }
-
-    draft_post.content(content)?;
-
-    Ok(draft_post)
+pub trait GrowDeserializer<T> {
+    fn deserialize(source: &str) -> Result<T, Error>;
 }
 
-/// Преобразует Post в форматированную строку для grow записи.
-/// title здесь это идентификатор - slug, который будет использован для системы перевода
-pub fn serialize_with_template(post: &Post, template: String) -> String {
-    let published_date = post
-        .published_date_time
-        .format(ISO8601_DATE_TIME_FORMAT)
-        .to_string();
+type ParameterName = String;
+type ParameterValue = String;
 
-    let template_tuple = [
-        ("title", post.slug.clone()),
-        ("author", post.author.clone()),
-        ("description", post.description.clone()),
-        ("image", "/static/images/default.png".to_string()),
-        ("lang", post.lang.to_string()),
-        ("slug", post.slug.clone()),
-        ("content", post.draft_content.clone()),
-        ("publish_date", published_date),
-        ("keywords", post.keywords.join(KEYWORDS_DELIMITER)),
-    ];
+fn split_meta_and_text(value: &str, delimiter: &str) -> Result<(String, String), Error> {
+    let (meta, text) = value
+        .trim()
+        .rsplit_once(delimiter)
+        .ok_or(Error::IncorrectFormat(format!("Meta and text should be delimited by `{}`",delimiter)))?;
 
-    let key_values = HashMap::from(template_tuple.map(|(k, v)| (k, v)));
+    Ok((meta.to_string(), text.to_string()))
+}
 
-    process_template(template, key_values)
+fn split_key_value(content: &str, delimiter: &str) -> Result<(ParameterName, ParameterValue), Error> {
+    let (key, value) = content.split_once(delimiter).ok_or(
+        Error::IncorrectFormat(format!("Meta key value should be delimited by `{}`", delimiter))
+    )?;
+    let key = key.replace(|c: char| !c.is_alphanumeric(), "");
+    Ok((key, value.trim().to_string()))
+}
+
+fn parse_meta_into_map(content: String) -> Result<HashMap<String, String>, Error> {
+    let meta_lines: Vec<String> = content.trim().split(LF).skip(1).map(ToString::to_string).collect(); // skip first META_DELIMITER delimiter
+
+    let mut hashmap: HashMap<String, String> = HashMap::new();
+
+    for line in meta_lines {
+        let (parameter_name, parameter_value) = split_key_value(&line, KEY_VALUE_DELIMITER)?;
+
+        if parameter_name.is_empty() || parameter_value.is_empty() {
+            continue
+        }
+
+        hashmap.insert(parameter_name.to_string(), parameter_value.to_string());
+    }
+
+    Ok(hashmap)
+}
+
+fn convert_grow_content_to_hashmap(content: &str) -> Result<HashMap<String, String>, Error> {
+    let (meta, text) = split_meta_and_text(content, META_DELIMITER)?;
+    let mut map = parse_meta_into_map(meta)?;
+    map.insert(TEXT_FIELD_NAME.to_string(), text);
+
+    Ok(map)
+}
+
+impl GrowDeserializer<DraftPost> for DraftPost {
+    fn deserialize(source: &str) -> Result<DraftPost, Error> {
+        let map = convert_grow_content_to_hashmap(source)?;
+        let mut builder = DraftPost::builder();
+
+        builder.build_from_hashmap(map)
+    }
+}
+
+impl GrowDeserializer<GrowPost> for GrowPost {
+    fn deserialize(source: &str) -> Result<GrowPost, Error> {
+        let map = convert_grow_content_to_hashmap(source)?;
+        let mut builder = GrowPost::builder();
+
+        builder.build_from_hashmap(map)
+    }
 }
 
 pub fn process_template<S: std::hash::BuildHasher>(
@@ -96,35 +87,23 @@ pub fn process_template<S: std::hash::BuildHasher>(
 
 #[cfg(test)]
 mod tests {
-    use crate::command::Error;
-    use crate::grow::serdes::deserialize_to_draft_post;
     use crate::grow::{KEY_VALUE_DELIMITER, META_DELIMITER};
+    use std::{assert_eq, format};
+    use crate::command::Error;
+    use crate::grow::post::DraftPost;
+    use crate::grow::serdes::{GrowDeserializer};
 
     #[test]
     fn fail_deserialize_when_meta_content_have_incorrect_delimiter() {
-        let err = Error::IncorrectFormat(format!(
-            "Meta and content should be delimited by {}",
-            META_DELIMITER
-        ));
+        let err = Error::IncorrectFormat(format!("Meta and text should be delimited by `{}`", META_DELIMITER));
 
-        assert_eq!(
-            err,
-            deserialize_to_draft_post("Incorrect value").err().unwrap()
-        );
+        assert_eq!(err, DraftPost::deserialize("Incorrect value").err().unwrap());
     }
 
     #[test]
     fn fail_deserialize_when_meta_content_have_incorrect_key_value_delimiter() {
-        let err = Error::IncorrectFormat(format!(
-            "Meta key value should be delimited by {}",
-            KEY_VALUE_DELIMITER
-        ));
+        let err = Error::IncorrectFormat(format!("Meta key value should be delimited by `{}`", KEY_VALUE_DELIMITER));
 
-        assert_eq!(
-            err,
-            deserialize_to_draft_post("incorrect_meta_value---content")
-                .err()
-                .unwrap()
-        );
+        assert_eq!(err, DraftPost::deserialize("---\nincorrect_meta_value\n---content").err().unwrap());
     }
 }

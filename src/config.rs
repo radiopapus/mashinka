@@ -1,4 +1,5 @@
 #![allow(clippy::must_use_candidate)]
+#![allow(clippy::or_fun_call)]
 
 use crate::command::Error;
 use crate::grow::lang::Lang;
@@ -29,14 +30,12 @@ impl Config {
         let mut args_map = HashMap::new();
         for param in args {
             if param.contains(PARAMETER_KEY_VALUE_DELIMITER) {
-                let (k, v) = param
-                    .split_once(PARAMETER_KEY_VALUE_DELIMITER)
-                    .ok_or_else(|| {
-                        Error::IncorrectFormat(format!(
-                            "Parameter key values should be delimited by {}",
-                            PARAMETER_KEY_VALUE_DELIMITER
-                        ))
-                    })?;
+                let (k, v) = param.split_once(PARAMETER_KEY_VALUE_DELIMITER).ok_or(
+                    Error::IncorrectFormat(format!(
+                        "Parameter key values should be delimited by {}",
+                        PARAMETER_KEY_VALUE_DELIMITER
+                    )),
+                )?;
                 args_map.insert(k.to_string(), v.to_string());
                 continue;
             }

@@ -1,7 +1,8 @@
-use crate::command::{Command, CommandResult, Error, PUBLISH_COMMAND_NAME};
+use std::fs;
+use crate::command::{Command, CommandResult, Details, Error, PUBLISH_COMMAND_NAME};
 use crate::config::Config;
-use crate::grow::draft_post::DraftPost;
-use std::collections::HashMap;
+use crate::grow::post::{DraftPost, GrowPostTranslation, WriterWrapper};
+use crate::grow::serdes::GrowDeserializer;
 
 pub struct Publish {
     config: Config,
@@ -17,36 +18,45 @@ impl Publish {
 /// grow запись (--post-path) с созданием файлов перевода в зависимости от языка lang.
 impl Command for Publish {
     fn run(&self) -> Result<CommandResult, Error> {
-        let draft_path = self.config.get_draft_path_or_default()?;
-        let draft_post = DraftPost::from_grow_draft_file(&draft_path)?;
+        let config = &self.config;
+        let draft_file_content = fs::read_to_string(config.get_draft_path_or_default()?).map_err(
+            Error::ReadFile
+        )?;
+        let draft_post = DraftPost::deserialize(draft_file_content.as_str())?;
 
         // Одобряем черновик
-        let post = draft_post.approve();
-
-        // todo implement Collection of Detail items
-        let mut details: HashMap<String, String> = HashMap::new();
+        let approved_post = draft_post.approve();
 
         let command = PUBLISH_COMMAND_NAME.to_string();
 
-        if self.config.is_dry_run() {
-            details.insert(String::from("draft_post"), format!("{:#?}", draft_post));
-            details.insert(String::from("post"), format!("{:#?}", post));
+        // todo implement Collection of Detail items
+        // let mut details: HashMap<String, String> = HashMap::new();
+        let mut details = Details::new();
+
+        // grow запись
+        let posts_path = config.get_posts_path_or_default(approved_post.lang)?;
+        let grow_post = approved_post.to_grow_post()?;
+        let grow_post_path = grow_post.build_post_path(&posts_path);
+        details.push("post_path".to_string(), format!("{:#?}", grow_post_path));
+
+        // перевод
+        let translation = GrowPostTranslation { lang: grow_post.lang, id: grow_post.slug.clone(), translated_value: grow_post.title.clone() };
+        let translation_path = config.get_translation_path_or_default(approved_post.lang)?;
+        details.push("translation_path".to_string(), format!("{:#?}", translation_path));
+
+        if config.is_dry_run() {
+            details.push("draft_post".to_string(), format!("{:#?}", draft_post));
+            details.push("post".to_string(), format!("{:#?}", approved_post));
             return Ok(CommandResult { command, details });
         }
 
-        let published_post = post.publish(
-            &self.config.get_posts_path_or_default(post.lang)?,
-            &self.config.get_translation_path_or_default(post.lang)?,
-        )?;
+        let write_in_transaction = || -> Result<(), Error> {
+            WriterWrapper::write_file(&grow_post_path, &grow_post.to_string())?;
+            WriterWrapper::write_file_with_append(&translation_path, &translation.to_string())?;
+            Ok(())
+        };
 
-        details.insert(
-            String::from("post_path"),
-            format!("{:?}", published_post.path),
-        );
-        details.insert(
-            String::from("translation_path"),
-            format!("{:?}", published_post.translation_path),
-        );
+        write_in_transaction()?;
 
         Ok(CommandResult { command, details })
     }
