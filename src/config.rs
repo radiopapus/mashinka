@@ -21,7 +21,12 @@ impl Default for Config {
     }
 }
 
+//todo WHY fn in Config is not static?
 impl Config {
+    pub fn available_languages(&self) -> Vec<Lang> {
+        vec![Lang::Ru, Lang::En]
+    }
+
     /// # Errors
     ///
     /// Вернет `Error` если при парсинге входных параметров ключи имеют неверный формат.
@@ -68,9 +73,7 @@ impl Config {
             return Err(Error::EmptyValue(String::from("ABS_POST_DRAFT_FILE")));
         }
 
-        let draft_path = self
-            .args_map
-            .get("--draft-path")
+        let draft_path = self.args_map.get("--draft-path")
             .unwrap_or(&default_draft_path);
 
         Ok(PathBuf::from(draft_path))
@@ -81,21 +84,18 @@ impl Config {
     /// окружения `ABS_POSTS_PATH`.
     /// # Errors
     ///
-    /// Вернет `Error` если переменная окружения `ABS_POSTS_PATH` не задана или имеет нулевую длинну.
-    pub fn get_posts_path_or_default(&self, lang: Lang) -> Result<PathBuf, Error> {
+    /// Вернет `Error` если переменная окружения `ABS_POSTS_PATH` не задана или имеет нулевую длину.
+    pub fn get_posts_path_or_default(&self) -> Result<PathBuf, Error> {
         let default_posts_path = env::var("ABS_POSTS_PATH")?;
 
         if default_posts_path.is_empty() {
             return Err(Error::EmptyValue(String::from("ABS_POSTS_PATH")));
         }
 
-        let resolved_path = self
-            .args_map
-            .get("--posts-path")
-            .unwrap_or(&default_posts_path)
-            .replace("[lang]", &lang.to_lowercase());
+        let path = self.args_map.get("--posts-path")
+            .unwrap_or(&default_posts_path);
 
-        Ok(PathBuf::from(&resolved_path))
+        Ok(PathBuf::from(&path))
     }
 
     /// Возвращает путь до переводов в зависимости от языка записи.
@@ -103,19 +103,35 @@ impl Config {
     /// переменной окружения `ABS_TRANSLATIONS_PATH`.
     /// # Errors
     ///
-    /// Вернет Error если переменная окружения `ABS_TRANSLATIONS_PATH` не задана или имеет нулевую длинну.
-    pub fn get_translation_path_or_default(&self, lang: Lang) -> Result<PathBuf, Error> {
+    /// Вернет Error если переменная окружения `ABS_TRANSLATIONS_PATH` не задана или имеет нулевую длину.
+    pub fn get_translations_path_or_default(&self) -> Result<PathBuf, Error> {
         let default_translation_path = env::var("ABS_TRANSLATIONS_PATH")?;
 
         if default_translation_path.is_empty() {
             return Err(Error::EmptyValue(String::from("ABS_TRANSLATIONS_PATH")));
         }
 
-        let resolved_path = self
-            .args_map
-            .get("--translations-path")
-            .unwrap_or(&default_translation_path)
-            .replace("[lang]", &lang.to_lowercase());
+        let path = self.args_map.get("--translations-path")
+            .unwrap_or(&default_translation_path);
+
+        Ok(PathBuf::from(&path))
+    }
+
+    /// Возвращает путь до файла с индексом в зависимости от языка записи.
+    /// Если задан параметр --index-path, то использует его, иначе берет значение из
+    /// переменной окружения `ABS_INDEX_FILE`.
+    /// # Errors
+    ///
+    /// Вернет Error если переменная окружения `ABS_INDEX_FILE` не задана или имеет нулевую длину.
+    pub fn get_index_file_path_or_default(&self) -> Result<PathBuf, Error> {
+        let default_path = env::var("ABS_INDEX_FILE")?;
+
+        if default_path.is_empty() {
+            return Err(Error::EmptyValue(String::from("ABS_INDEX_FILE")));
+        }
+
+        let resolved_path = self.args_map.get("--index-path")
+            .unwrap_or(&default_path);
 
         Ok(PathBuf::from(&resolved_path))
     }

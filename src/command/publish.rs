@@ -19,9 +19,8 @@ impl Publish {
 impl Command for Publish {
     fn run(&self) -> Result<CommandResult, Error> {
         let config = &self.config;
-        let draft_file_content = fs::read_to_string(config.get_draft_path_or_default()?).map_err(
-            Error::ReadFile
-        )?;
+        let draft_path = &config.get_draft_path_or_default()?;
+        let draft_file_content = fs::read_to_string(draft_path).map_err(Error::ReadFile)?;
         let draft_post = DraftPost::deserialize(draft_file_content.as_str())?;
 
         // Одобряем черновик
@@ -32,14 +31,16 @@ impl Command for Publish {
         let mut details = Details::new();
 
         // grow запись
-        let posts_path = config.get_posts_path_or_default(approved_post.lang)?;
+        let posts_path = config.get_posts_path_or_default()?;
         let grow_post = approved_post.to_grow_post()?;
         let grow_post_path = grow_post.build_post_path(&posts_path);
         details.push("post_path".to_string(), format!("{:#?}", grow_post_path));
-
         // перевод
-        let translation = GrowPostTranslation { lang: grow_post.lang, id: grow_post.slug.clone(), translated_value: grow_post.title.clone() };
-        let translation_path = config.get_translation_path_or_default(approved_post.lang)?;
+        let translation = GrowPostTranslation { id: grow_post.slug.clone(), translated_value: grow_post.title.clone() };
+        let translation_path = config.get_translations_path_or_default()?
+            .join(grow_post.lang.to_lowercase())
+            .join("LC_MESSAGES/messages.po");
+
         details.push("translation_path".to_string(), format!("{:#?}", translation_path));
 
         if config.is_dry_run() {

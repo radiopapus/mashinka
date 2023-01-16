@@ -28,11 +28,11 @@ impl Display for Lang {
 impl FromStr for Lang {
     type Err = String;
 
-    fn from_str(s: &str) -> Result<Self, String> {
+    fn from_str(s: &str) -> Result<Lang, String> {
         match s.trim().to_lowercase().as_str() {
             "ru" => Ok(Lang::Ru),
             "en" => Ok(Lang::En),
-            _ => Err(String::from("Unknown language")),
+            _ => Err(s.to_string())
         }
     }
 }

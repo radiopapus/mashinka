@@ -1,13 +1,106 @@
-use crate::command::{Command, CommandResult, Details, Error, INDEX_COMMAND_NAME};
+#![allow(clippy::must_use_candidate)]
+#![allow(clippy::or_fun_call)]
 
-pub struct Index;
+use std::collections::HashMap;
+use crate::command::{Command, CommandResult, Details, Error, INDEX_COMMAND_NAME};
+use crate::config::Config;
+use crate::grow::post::{GrowPost, GrowPostTranslation, WriterWrapper};
+use crate::grow::serdes::{process_template};
+use crate::grow::TRANSLATION_INDEX_TEMPLATE;
+
+pub struct Index {
+    config: Config
+}
+
+impl Index {
+    pub fn new(config: Config) -> Box<Index> {
+        Box::new(Self { config })
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct IndexContent {
+    /// Путь до записи относительно корня сайта, например /ru/posts/{post_name}
+    id: String,
+    /// Заголовок на языке записи
+    title: String,
+    /// Текст записи для индексации
+    content: String,
+}
+
+impl IndexContent {
+    pub fn from_post_and_translation(post: &GrowPost, translated_value: &str) -> IndexContent {
+        IndexContent {
+            id: format!("/{}/posts/{}", post.lang.to_lowercase(), post.slug),
+            title: translated_value.to_string(),
+            content: post.get_sanitized_text()
+        }
+    }
+}
+
+impl ToString for IndexContent {
+    fn to_string(&self) -> String {
+        process_template(TRANSLATION_INDEX_TEMPLATE.to_string(), HashMap::from([
+            ("id", self.id.clone()),
+            ("title", self.title.clone()),
+            ("content", self.content.clone())
+        ]))
+    }
+}
 
 /// Индексирует записи для поиска
 impl Command for Index {
     fn run(&self) -> Result<CommandResult, Error> {
-        Ok(CommandResult {
-            command: INDEX_COMMAND_NAME.to_string(),
-            details: Details::new()
-        })
+        let config = &self.config;
+        let mut index_content_items = vec![];
+
+        let mut all_translations: Vec<GrowPostTranslation> = Vec::new();
+
+        for lang in config.available_languages() {
+            let translation_path = config.get_translations_path_or_default()?
+                .join(lang.to_lowercase())
+                .join("LC_MESSAGES/messages.po");
+
+            let translations = GrowPostTranslation::get_translations(&translation_path)?;
+            all_translations = [all_translations, translations].concat();
+        }
+
+        let translation_map: HashMap<String, String> = all_translations.into_iter()
+            .map(|t| (t.id, t.translated_value))
+            .collect();
+
+        let posts_path = config.get_posts_path_or_default()?;
+
+        for lang in config.available_languages() {
+            let posts = GrowPost::get_posts_by_lang(&posts_path, lang)?;
+
+            for grow_post in posts {
+                let translation = translation_map.get(&grow_post.slug).ok_or(
+                    Error::IncorrectFormat(format!("slug not found in translation `{:?}`", &grow_post))
+                )?;
+
+                let index_content = IndexContent::from_post_and_translation(
+                    &grow_post,
+                    translation
+                );
+                index_content_items.push(index_content.to_string());
+            }
+        }
+
+        let index_path = &config.get_index_file_path_or_default()?;
+        let mut details = Details::new();
+
+        let as_json_list = format!("[{}]", index_content_items.join(","));
+        details.push("index_data".to_string(), as_json_list.clone());
+
+        let command = String::from(INDEX_COMMAND_NAME);
+
+        if config.is_dry_run() {
+            return Ok(CommandResult { command, details })
+        }
+
+        WriterWrapper::write_file(index_path, &as_json_list)?;
+
+        Ok(CommandResult { command, details })
     }
 }
