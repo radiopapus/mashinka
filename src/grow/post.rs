@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 use std::fs;
 use crate::command::Error;
-use crate::grow::lang::Lang;
+use crate::grow::lang::{Lang, slugify};
 use crate::grow::serdes::{GrowDeserializer, process_template};
 use crate::grow::{AUTHOR_FIELD_NAME, DEFAULT_AUTHOR, DEFAULT_AUTHOR_EN, DESCRIPTION_FIELD_NAME, DRAFT_TEMPLATE, IMAGE_FIELD_NAME, ISO8601_DATE_FORMAT, ISO8601_DATE_TIME_FORMAT, KEYWORDS_DELIMITER, KEYWORDS_FIELD_NAME, LANGUAGE_FIELD_NAME, POST_TEMPLATE, PUBLISHED_DATE_FIELD_NAME, SLUG_FIELD_NAME, TEXT_FIELD_NAME, TITLE_FIELD_NAME, TRANSLATION_TEMPLATE};
 use chrono::{DateTime, Utc};
@@ -11,7 +11,6 @@ use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use regex::{Regex};
-use slug::slugify;
 use crate::grow::builder::{BasePostBuilder, DraftPostBuilder, GrowPostBuilder, PostBuilder};
 
 pub trait PostContent<B> {
@@ -77,6 +76,7 @@ impl DraftPost {
         // Результат "slug" состоит из символов a-z, 0-9 и '-'.
         // Никогда не содержит более одного '-' и не начинается с '-'.
         // see slugify implementation for details.
+
         let slug = slugify(&self.title);
 
         let author = if self.lang != Lang::Ru { DEFAULT_AUTHOR_EN } else { DEFAULT_AUTHOR };

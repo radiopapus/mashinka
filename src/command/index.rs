@@ -30,8 +30,8 @@ pub struct IndexContent {
 }
 
 impl IndexContent {
-    /// Удаляем все ненужное (html, переносы строк) и оставляем только нужное (шутка)
-    /// только текст.
+    /// Удаляем все ненужное (html, переносы строк, табы), экранируем кавычки
+    /// и оставляем нужное (шутка) только текст.
     pub fn sanitize(value: &str) -> String {
         let re = RegexBuilder::new(r#"<[^>]*>"#).build().unwrap();
         re.replace_all(value, "")
@@ -39,6 +39,7 @@ impl IndexContent {
             .replace('"', "\\\"")
     }
 
+    /// Генерит IndexContent на основе данных post и translated_value
     pub fn from_post_and_translation(post: &GrowPost, translated_value: &str) -> IndexContent {
         IndexContent {
             id: format!("/{}/posts/{}", post.lang.to_lowercase(), post.slug),
@@ -64,7 +65,6 @@ impl ToString for IndexContent {
 impl Command for Index {
     fn run(&self) -> Result<CommandResult, Error> {
         let config = &self.config;
-        let mut index_content_items = vec![];
 
         let mut all_translations: Vec<GrowPostTranslation> = Vec::new();
 
@@ -81,6 +81,7 @@ impl Command for Index {
             .map(|t| (t.id, t.translated_value))
             .collect();
 
+        let mut index_content_items = vec![];
         let posts_path = config.get_posts_path_or_default()?;
 
         for lang in config.available_languages() {
@@ -91,10 +92,7 @@ impl Command for Index {
                     Error::IncorrectFormat(format!("slug not found in translation `{:?}`", &grow_post))
                 )?;
 
-                let index_content = IndexContent::from_post_and_translation(
-                    &grow_post,
-                    translation
-                );
+                let index_content = IndexContent::from_post_and_translation(&grow_post, translation);
                 index_content_items.push(index_content.to_string());
             }
         }

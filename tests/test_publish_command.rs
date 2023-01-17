@@ -82,8 +82,8 @@ test_text
         let now = Utc::now();
         let formatted_date = now.format(ISO8601_DATE_FORMAT).to_string();
 
-        // 2022-12-24-eto-testovyi-zagolovok@ru.md
-        let expected_post_file_name = format!("{formatted_date}-eto-testovyi-zagolovok@ru.md");
+        // 2022-12-24-eto-testoviy-zagolovok@ru.md
+        let expected_post_file_name = format!("{formatted_date}-eto-testoviy-zagolovok@ru.md");
 
         let post_file_path = format!("{}/{}/{}", posts_path, "ru", expected_post_file_name);
         let expected_post_file = Path::new(&post_file_path);
@@ -148,8 +148,8 @@ test_text
         let now = Utc::now();
         let formatted_date = now.format(ISO8601_DATE_FORMAT).to_string();
 
-        // 2022-12-24-eto-testovyi-zagolovok@ru.md
-        let expected_post_file_name = format!("{formatted_date}-eto-testovyi-zagolovok@ru.md");
+        // 2022-12-24-eto-testoviy-zagolovok@ru.md
+        let expected_post_file_name = format!("{formatted_date}-eto-testoviy-zagolovok@ru.md");
 
         let post_file_path = format!("{}/{}/{}", posts_path, "ru", expected_post_file_name);
         let expected_post_file = Path::new(&post_file_path);
