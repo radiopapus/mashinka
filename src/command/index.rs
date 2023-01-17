@@ -2,6 +2,7 @@
 #![allow(clippy::or_fun_call)]
 
 use std::collections::HashMap;
+use regex::RegexBuilder;
 use crate::command::{Command, CommandResult, Details, Error, INDEX_COMMAND_NAME};
 use crate::config::Config;
 use crate::grow::post::{GrowPost, GrowPostTranslation, WriterWrapper};
@@ -29,22 +30,33 @@ pub struct IndexContent {
 }
 
 impl IndexContent {
+    /// Удаляем все ненужное (html, переносы строк) и оставляем только нужное (шутка)
+    /// только текст.
+    pub fn sanitize(value: &str) -> String {
+        let re = RegexBuilder::new(r#"<[^>]*>"#).build().unwrap();
+        re.replace_all(value, "")
+            .replace(['\n', '\r', '\t', '\u{a0}', '\\' ], "")
+            .replace('"', "\\\"")
+    }
+
     pub fn from_post_and_translation(post: &GrowPost, translated_value: &str) -> IndexContent {
         IndexContent {
             id: format!("/{}/posts/{}", post.lang.to_lowercase(), post.slug),
-            title: translated_value.to_string(),
-            content: post.get_sanitized_text()
+            title: Self::sanitize(translated_value),
+            content: Self::sanitize(post.text.as_str())
         }
     }
 }
 
 impl ToString for IndexContent {
     fn to_string(&self) -> String {
-        process_template(TRANSLATION_INDEX_TEMPLATE.to_string(), HashMap::from([
-            ("id", self.id.clone()),
-            ("title", self.title.clone()),
-            ("content", self.content.clone())
-        ]))
+        process_template(
+            TRANSLATION_INDEX_TEMPLATE.to_string(), HashMap::from([
+                ("id", self.id.clone()),
+                ("title", self.title.clone()),
+                ("content", self.content.clone())
+            ])
+        )
     }
 }
 
@@ -90,7 +102,7 @@ impl Command for Index {
         let index_path = &config.get_index_file_path_or_default()?;
         let mut details = Details::new();
 
-        let as_json_list = format!("[{}]", index_content_items.join(","));
+        let as_json_list = format!(r#"[{}]"#, index_content_items.join(","));
         details.push("index_data".to_string(), as_json_list.clone());
 
         let command = String::from(INDEX_COMMAND_NAME);

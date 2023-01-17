@@ -10,7 +10,7 @@ use chrono::{DateTime, Utc};
 use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use regex::{Regex, RegexBuilder};
+use regex::{Regex};
 use slug::slugify;
 use crate::grow::builder::{BasePostBuilder, DraftPostBuilder, GrowPostBuilder, PostBuilder};
 
@@ -117,15 +117,6 @@ pub struct GrowPost {
 }
 
 impl GrowPost {
-    /// Удаляем все ненужное (html, переносы строк) и оставляем только нужное (шутка)
-    /// только текст.
-    pub fn get_sanitized_text(&self) -> String {
-        let re = RegexBuilder::new(r#"<[^>]*>"#).build().unwrap();
-
-        let stripped_tags = re.replace_all(self.text.as_str(), "");
-        return stripped_tags.replace(['\n', '\r'], "");
-    }
-
     pub fn get_posts_by_lang(base_posts_path: &Path, lang: Lang) -> Result<Vec<Self>, Error> {
         let posts_path = fs::read_dir(
             &base_posts_path.join(lang.to_lowercase())
