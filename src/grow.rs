@@ -25,6 +25,7 @@ pub const POST_TEMPLATE: &str = include_str!("grow/templates/post.tpl");
 pub const TRANSLATION_TEMPLATE: &str = include_str!("grow/templates/translation.tpl");
 pub const DRAFT_TEMPLATE: &str = include_str!("grow/templates/draft_post.tpl");
 pub const TRANSLATION_INDEX_TEMPLATE: &str = include_str!("grow/templates/translation_index.tpl");
+pub const RU_EN_MAPPING: &str = include_str!("grow/templates/ru_en_mapping.tpl");
 
 pub const ISO8601_DATE_TIME_FORMAT: &str = "%Y-%m-%d %H:%M:%S";
 pub const ISO8601_DATE_FORMAT: &str = "%Y-%m-%d";

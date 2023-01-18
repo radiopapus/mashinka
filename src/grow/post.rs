@@ -3,7 +3,6 @@
 use std::collections::HashMap;
 use std::fs;
 use crate::command::Error;
-use crate::grow::lang::{Lang, slugify};
 use crate::grow::serdes::{GrowDeserializer, process_template};
 use crate::grow::{AUTHOR_FIELD_NAME, DEFAULT_AUTHOR, DEFAULT_AUTHOR_EN, DESCRIPTION_FIELD_NAME, DRAFT_TEMPLATE, IMAGE_FIELD_NAME, ISO8601_DATE_FORMAT, ISO8601_DATE_TIME_FORMAT, KEYWORDS_DELIMITER, KEYWORDS_FIELD_NAME, LANGUAGE_FIELD_NAME, POST_TEMPLATE, PUBLISHED_DATE_FIELD_NAME, SLUG_FIELD_NAME, TEXT_FIELD_NAME, TITLE_FIELD_NAME, TRANSLATION_TEMPLATE};
 use chrono::{DateTime, Utc};
@@ -12,6 +11,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use regex::{Regex};
 use crate::grow::builder::{BasePostBuilder, DraftPostBuilder, GrowPostBuilder, PostBuilder};
+use crate::grow::lang::{Lang, slugify};
 
 pub trait PostContent<B> {
     fn new() -> Self;
@@ -321,6 +321,24 @@ mod tests {
     #[test]
     fn test_draft_to_approved_post_conversion() {
         let default_draft = DraftPost {
+            text: "txt".to_string(),
+            ..DraftPost::default()
+        };
+        let draft_post = DraftPost::deserialize(&default_draft.to_string()).unwrap();
+
+        let approved_post = draft_post.approve();
+
+        assert_eq!(draft_post.title, approved_post.title);
+        assert_eq!(draft_post.description, approved_post.description);
+        assert_eq!(draft_post.keywords, approved_post.keywords);
+        assert_eq!(draft_post.text, approved_post.text);
+        assert_eq!(draft_post.lang, approved_post.lang);
+    }
+
+    #[test]
+    fn test_draft_to_approved_post_conversion_with_title() {
+        let default_draft = DraftPost {
+            title: "это тестовый заголовок".to_string(),
             text: "txt".to_string(),
             ..DraftPost::default()
         };
