@@ -19,6 +19,7 @@ impl Index {
     }
 }
 
+/// Данные для индексатора
 #[derive(Debug, Default)]
 pub struct IndexContent {
     /// Путь до записи относительно корня сайта, например /ru/posts/{post_name}
@@ -39,7 +40,6 @@ impl IndexContent {
             .replace('"', "\\\"")
     }
 
-    /// Генерит IndexContent на основе данных post и translated_value
     pub fn from_post_and_translation(post: &GrowPost, translated_value: &str) -> IndexContent {
         IndexContent {
             id: format!("/{}/posts/{}", post.lang.to_lowercase(), post.slug),
@@ -68,12 +68,13 @@ impl Command for Index {
 
         let mut all_translations: Vec<GrowPostTranslation> = Vec::new();
 
+        // Собираем все переводы
         for lang in config.available_languages() {
             let translation_path = config.get_translations_path_or_default()?
                 .join(lang.to_lowercase())
                 .join("LC_MESSAGES/messages.po");
 
-            let translations = GrowPostTranslation::get_translations(&translation_path)?;
+            let translations = GrowPostTranslation::fetch_translations(&translation_path)?;
             all_translations = [all_translations, translations].concat();
         }
 
@@ -84,8 +85,9 @@ impl Command for Index {
         let mut index_content_items = vec![];
         let posts_path = config.get_posts_path_or_default()?;
 
+        // Сопоставляем translation post и добавляем в index_content_items для записи в индекс.
         for lang in config.available_languages() {
-            let posts = GrowPost::get_posts_by_lang(&posts_path, lang)?;
+            let posts = GrowPost::fetch_posts_by_lang(&posts_path, lang)?;
 
             for grow_post in posts {
                 let translation = translation_map.get(&grow_post.slug).ok_or(

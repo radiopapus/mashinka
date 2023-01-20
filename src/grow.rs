@@ -35,6 +35,6 @@ const KEY_VALUE_DELIMITER: &str = ":";
 const KEYWORDS_DELIMITER: &str = ",";
 const LF: char = '\n';
 
-const MAX_CHARS_IN_DESCRIPTION: usize = 255; // ideally
-const MAX_CHARS_IN_TITLE: usize = 100; // should be 75 ideally
-const MAX_KEYWORDS_COUNT: usize = 10; // ideally 10
+const MAX_CHARS_IN_DESCRIPTION: usize = 255;
+const MAX_CHARS_IN_TITLE: usize = 100;
+const MAX_KEYWORDS_COUNT: usize = 10;
