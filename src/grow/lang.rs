@@ -3,7 +3,6 @@
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
-use crate::grow::RU_EN_MAPPING;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Lang {
@@ -45,7 +44,7 @@ impl Lang {
     }
 }
 
-pub fn slugify(value: &str) -> String {
+pub fn slugify(value: &str, mapping: &str) -> String {
     let value = value.trim().to_lowercase();
 
     if value.is_empty() {
@@ -54,11 +53,11 @@ pub fn slugify(value: &str) -> String {
 
     let value = value.replace(' ', "-");
 
-    let mut mapping = HashMap::new();
+    let mut map = HashMap::new();
 
-    for line in RU_EN_MAPPING.lines() {
+    for line in mapping.lines() {
         let (char_ru, char_en) = line.split_once(';').unwrap();
-        mapping.insert(char_ru, char_en);
+        map.insert(char_ru, char_en);
     }
 
     let mut slug = String::new();
@@ -67,7 +66,7 @@ pub fn slugify(value: &str) -> String {
         let char_as_string = String::from(char);
         let char = char_as_string.as_str();
         slug.push_str(
-            mapping.get(char).unwrap_or(&char)
+            map.get(char).unwrap_or(&char)
         );
     }
 
