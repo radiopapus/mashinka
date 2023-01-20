@@ -1,12 +1,9 @@
-use std::collections::HashMap;
 use std::path::PathBuf;
-use std::str::FromStr;
 use chrono::{DateTime, NaiveDateTime, Utc};
 use crate::command::Error;
 use crate::grow::{
-    DESCRIPTION_FIELD_NAME, ISO8601_DATE_TIME_FORMAT, KEYWORDS_DELIMITER, KEYWORDS_FIELD_NAME, MAX_CHARS_IN_DESCRIPTION,
-    MAX_CHARS_IN_TITLE, MAX_KEYWORDS_COUNT, TEXT_FIELD_NAME, TITLE_FIELD_NAME, LANGUAGE_FIELD_NAME,
-    PUBLISHED_DATE_FIELD_NAME, AUTHOR_FIELD_NAME, SLUG_FIELD_NAME, IMAGE_FIELD_NAME
+    DESCRIPTION_FIELD_NAME, ISO8601_DATE_TIME_FORMAT, KEYWORDS_FIELD_NAME, MAX_CHARS_IN_DESCRIPTION,
+    MAX_CHARS_IN_TITLE, MAX_KEYWORDS_COUNT, TEXT_FIELD_NAME, TITLE_FIELD_NAME,
 };
 use crate::grow::lang::Lang;
 use crate::grow::post::{DraftPost, GrowPost, PostContent};
@@ -45,9 +42,6 @@ pub trait BasePostBuilder<T, B> where T: PostContent<B>, B: PostBuilder {
     /// Строит объект на основе полей
     fn build(&self) -> T;
 
-    /// Строит объект по hashmap
-    fn build_from_hashmap(&mut self, hashmap: HashMap<String, String>) -> Result<T, Error>;
-
 
     /// Задает, очищает от пробелов и проверяет корректность заголовка записи.
     ///
@@ -64,6 +58,7 @@ pub trait BasePostBuilder<T, B> where T: PostContent<B>, B: PostBuilder {
         if title.chars().count() >= MAX_CHARS_IN_TITLE {
             return Err(Error::ValueTooLong(
                 String::from(TITLE_FIELD_NAME),
+                String::from(title),
                 MAX_CHARS_IN_TITLE,
             ));
         }
@@ -87,6 +82,7 @@ pub trait BasePostBuilder<T, B> where T: PostContent<B>, B: PostBuilder {
         if description.chars().count() >= MAX_CHARS_IN_DESCRIPTION {
             return Err(Error::ValueTooLong(
                 String::from(DESCRIPTION_FIELD_NAME),
+                String::from(description),
                 MAX_CHARS_IN_DESCRIPTION,
             ));
         }
@@ -105,9 +101,10 @@ pub trait BasePostBuilder<T, B> where T: PostContent<B>, B: PostBuilder {
             return Err(Error::EmptyValue(String::from(KEYWORDS_FIELD_NAME)));
         }
 
-        if keywords.len() >= MAX_KEYWORDS_COUNT {
+        if keywords.len() > MAX_KEYWORDS_COUNT {
             return Err(Error::ValueTooLong(
                 String::from(KEYWORDS_FIELD_NAME),
+                keywords.join(","),
                 MAX_KEYWORDS_COUNT,
             ));
         }
@@ -166,20 +163,6 @@ impl BasePostBuilder<DraftPost, DraftPostBuilder> for DraftPostBuilder {
             lang: self.draft.lang,
             text: self.draft.text.clone(),
         }
-    }
-
-    fn build_from_hashmap(&mut self, hashmap: HashMap<String, String>) -> Result<DraftPost, Error> {
-        for (parameter_name, value) in hashmap {
-            match parameter_name.as_str() {
-                TITLE_FIELD_NAME => self.title(value)?,
-                DESCRIPTION_FIELD_NAME => self.description(value)?,
-                KEYWORDS_FIELD_NAME => self.keywords_as_str(value, KEYWORDS_DELIMITER)?,
-                LANGUAGE_FIELD_NAME => self.lang(Lang::from_str(value.as_str()).map_err(Error::UnknownLang)?)?,
-                TEXT_FIELD_NAME => self.text(value)?,
-                unknown => return Err(Error::UnknownKey(unknown.to_string())),
-            };
-        }
-        Ok(self.build())
     }
 }
 
@@ -262,23 +245,5 @@ impl BasePostBuilder<GrowPost, GrowPostBuilder> for GrowPostBuilder {
             slug: self.slug.clone(),
             text: self.base_post.text.clone(),
         }
-    }
-
-    fn build_from_hashmap(&mut self, hashmap: HashMap<String, String>) -> Result<GrowPost, Error> {
-        for (parameter_name, parameter_value) in hashmap {
-            match parameter_name.as_str() {
-                AUTHOR_FIELD_NAME => self.author(parameter_value)?,
-                SLUG_FIELD_NAME => self.slug(parameter_value)?,
-                PUBLISHED_DATE_FIELD_NAME => self.published_at_str(parameter_value)?,
-                IMAGE_FIELD_NAME => self.image(parameter_value)?,
-                TITLE_FIELD_NAME => self.title(parameter_value)?,
-                DESCRIPTION_FIELD_NAME => self.description(parameter_value)?,
-                KEYWORDS_FIELD_NAME => self.keywords_as_str(parameter_value, KEYWORDS_DELIMITER)?,
-                TEXT_FIELD_NAME => self.text(parameter_value)?,
-                LANGUAGE_FIELD_NAME => self.lang(Lang::from_str(parameter_value.as_str()).map_err(Error::UnknownLang)?)?,
-                key => return Err(Error::UnknownKey(key.to_string())),
-            };
-        }
-        Ok(self.build())
     }
 }

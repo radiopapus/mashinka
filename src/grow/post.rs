@@ -1,16 +1,17 @@
 #![allow(clippy::must_use_candidate)]
 
 use std::collections::HashMap;
+use std::fs;
 use crate::command::Error;
-use crate::grow::lang::Lang;
-use crate::grow::serdes::{process_template};
-use crate::grow::{AUTHOR_FIELD_NAME, DEFAULT_AUTHOR, DEFAULT_AUTHOR_EN, DESCRIPTION_FIELD_NAME, DRAFT_TEMPLATE, IMAGE_FIELD_NAME, ISO8601_DATE_FORMAT, ISO8601_DATE_TIME_FORMAT, KEYWORDS_DELIMITER, KEYWORDS_FIELD_NAME, LANGUAGE_FIELD_NAME, POST_TEMPLATE, PUBLISHED_DATE_FIELD_NAME, SLUG_FIELD_NAME, TEXT_FIELD_NAME, TITLE_FIELD_NAME, TRANSLATION_TEMPLATE};
+use crate::grow::serdes::{GrowDeserializer, process_template};
+use crate::grow::{AUTHOR_FIELD_NAME, DEFAULT_AUTHOR, DEFAULT_AUTHOR_EN, DESCRIPTION_FIELD_NAME, DRAFT_TEMPLATE, IMAGE_FIELD_NAME, ISO8601_DATE_FORMAT, ISO8601_DATE_TIME_FORMAT, KEYWORDS_DELIMITER, KEYWORDS_FIELD_NAME, LANGUAGE_FIELD_NAME, POST_TEMPLATE, PUBLISHED_DATE_FIELD_NAME, RU_EN_MAPPING, SLUG_FIELD_NAME, TEXT_FIELD_NAME, TITLE_FIELD_NAME, TRANSLATION_TEMPLATE};
 use chrono::{DateTime, Utc};
 use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use slug::slugify;
+use regex::{Regex};
 use crate::grow::builder::{BasePostBuilder, DraftPostBuilder, GrowPostBuilder, PostBuilder};
+use crate::grow::lang::{Lang, slugify};
 
 pub trait PostContent<B> {
     fn new() -> Self;
@@ -75,7 +76,8 @@ impl DraftPost {
         // Результат "slug" состоит из символов a-z, 0-9 и '-'.
         // Никогда не содержит более одного '-' и не начинается с '-'.
         // see slugify implementation for details.
-        let slug = slugify(&self.title);
+
+        let slug = slugify(&self.title, RU_EN_MAPPING);
 
         let author = if self.lang != Lang::Ru { DEFAULT_AUTHOR_EN } else { DEFAULT_AUTHOR };
 
@@ -115,6 +117,28 @@ pub struct GrowPost {
 }
 
 impl GrowPost {
+    pub fn get_posts_by_lang(base_posts_path: &Path, lang: Lang) -> Result<Vec<Self>, Error> {
+        let posts_path = fs::read_dir(
+            &base_posts_path.join(lang.to_lowercase())
+        ).map_err(Error::ReadDir)?;
+
+        let mut posts: Vec<Self> = Vec::new();
+
+        for file in posts_path {
+            let entry_path = file.map_err(Error::ReadFile)?.path();
+
+            if entry_path.is_dir() { continue } // skip directory
+
+            let file_content = fs::read_to_string(&entry_path).map_err(Error::ReadFile)?;
+            //todo detect lang from grow post?
+            let mut grow_post = Self::deserialize(&file_content)?;
+            grow_post.lang = lang;
+            posts.push(grow_post)
+        }
+
+        Ok(posts)
+    }
+
     fn as_hashmap(&self) -> HashMap<&str, String> {
         HashMap::from([
             (TITLE_FIELD_NAME, self.title.clone()),
@@ -127,29 +151,6 @@ impl GrowPost {
             (PUBLISHED_DATE_FIELD_NAME, self.published_at.format(ISO8601_DATE_TIME_FORMAT).to_string()),
             (KEYWORDS_FIELD_NAME, self.keywords.join(KEYWORDS_DELIMITER)),
         ]).into_iter().collect()
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Default, Clone)]
-pub struct GrowPostTranslation {
-    pub lang: Lang,
-    pub id: String,
-    pub translated_value: String,
-}
-
-impl GrowPostTranslation {
-    fn new() -> Self {
-        Self::default()
-    }
-}
-
-/// Преобразует GrowPostTranslation в форматированную строку для переводов.
-/// title здесь это идентификатор - slug, который будет использован для системы перевода
-impl ToString for GrowPostTranslation {
-    fn to_string(&self) -> String {
-        process_template(TRANSLATION_TEMPLATE.to_string(),
-            HashMap::from([("id", self.id.to_string()), ("value", self.translated_value.to_string())]),
-        )
     }
 }
 
@@ -166,6 +167,41 @@ impl ToString for GrowPostTranslation {
 impl ToString for GrowPost {
     fn to_string(&self) -> String {
         process_template(POST_TEMPLATE.to_string(), self.as_hashmap())
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Default, Clone)]
+pub struct GrowPostTranslation {
+    pub id: String, // slug for us
+    pub translated_value: String,
+}
+
+impl GrowPostTranslation {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn get_translations(path: &PathBuf) -> Result<Vec<GrowPostTranslation>, Error> {
+        let translation_content = fs::read_to_string(path).map_err(Error::ReadFile)?;
+        let mut vec = Vec::new();
+
+        let re = Regex::new(r#"msgid "(.*)"\nmsgstr "(.*)""#).unwrap();
+
+        for cap in re.captures_iter(translation_content.as_str()) {
+            vec.push(GrowPostTranslation { id: cap[1].to_string(), translated_value: cap[2].to_string() });
+        }
+
+        Ok(vec)
+    }
+}
+
+/// Преобразует GrowPostTranslation в форматированную строку для переводов.
+/// title здесь это идентификатор - slug, который будет использован для системы перевода
+impl ToString for GrowPostTranslation {
+    fn to_string(&self) -> String {
+        process_template(TRANSLATION_TEMPLATE.to_string(),
+            HashMap::from([("id", self.id.to_string()), ("value", self.translated_value.to_string())]),
+        )
     }
 }
 
@@ -198,7 +234,8 @@ impl GrowPost {
         let published_at = self.published_at.format(ISO8601_DATE_FORMAT).to_string();
         let slug = self.slug.clone();
         let lang = self.lang.to_lowercase();
-        posts_path.join(format!("{published_at}-{slug}@{lang}.md"))
+        posts_path.join(self.lang.to_lowercase())
+            .join(format!("{published_at}-{slug}@{lang}.md"))
     }
 }
 
@@ -261,7 +298,7 @@ mod tests {
 
         let result = DraftPost::deserialize(&draft_content.to_string());
         assert_eq!(
-            ValueTooLong("title".to_string(), MAX_CHARS_IN_TITLE),
+            ValueTooLong("title".to_string(), draft_content.title, MAX_CHARS_IN_TITLE),
             result.err().unwrap()
         )
     }
@@ -276,7 +313,7 @@ mod tests {
         };
         let result = DraftPost::deserialize(&draft_content.to_string());
         assert_eq!(
-            ValueTooLong("description".to_string(), MAX_CHARS_IN_DESCRIPTION),
+            ValueTooLong("description".to_string(), draft_content.description, MAX_CHARS_IN_DESCRIPTION),
             result.err().unwrap()
         )
     }
@@ -284,6 +321,24 @@ mod tests {
     #[test]
     fn test_draft_to_approved_post_conversion() {
         let default_draft = DraftPost {
+            text: "txt".to_string(),
+            ..DraftPost::default()
+        };
+        let draft_post = DraftPost::deserialize(&default_draft.to_string()).unwrap();
+
+        let approved_post = draft_post.approve();
+
+        assert_eq!(draft_post.title, approved_post.title);
+        assert_eq!(draft_post.description, approved_post.description);
+        assert_eq!(draft_post.keywords, approved_post.keywords);
+        assert_eq!(draft_post.text, approved_post.text);
+        assert_eq!(draft_post.lang, approved_post.lang);
+    }
+
+    #[test]
+    fn test_draft_to_approved_post_conversion_with_title() {
+        let default_draft = DraftPost {
+            title: "это тестовый заголовок".to_string(),
             text: "txt".to_string(),
             ..DraftPost::default()
         };

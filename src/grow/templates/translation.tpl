@@ -1,5 +1,2 @@
-
-
 msgid "[id]"
 msgstr "[value]"
-

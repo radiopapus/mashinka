@@ -4,9 +4,10 @@
 use crate::command::help::Help;
 use crate::command::publish::Publish;
 use crate::config::Config;
-use std::env;
+use std::{env};
 use chrono::ParseError;
 use thiserror::Error;
+use crate::command::index::Index;
 
 pub mod help;
 pub mod index;
@@ -26,8 +27,8 @@ pub enum Error {
     DateTimeError(ParseError),
     #[error("Value for {0} should be filled (not empty)")]
     EmptyValue(String),
-    #[error("Value for {0} is too long. Expected less than {1}")]
-    ValueTooLong(String, usize),
+    #[error("Value for {0} is too long, example: {1}. Expected less than {2}")]
+    ValueTooLong(String, String, usize),
     #[error("Env variable error")]
     EnvVar(#[from] env::VarError),
     // deserializer
@@ -35,11 +36,13 @@ pub enum Error {
     UnknownKey(String),
     #[error("Have no clue how to process {0} language value")]
     UnknownLang(String),
-    #[error("Can't read file {0}")]
+    #[error("Can't read file {0:?}")]
     ReadFile(std::io::Error),
-    #[error("Can't write file {0}")]
+    #[error("Can't write file {0:?}")]
     WriteFile(std::io::Error),
-    #[error("Incorrect format. {0}")]
+    #[error("Can't read dir {0:?}")]
+    ReadDir(std::io::Error),
+    #[error("Incorrect format. {0:?}")]
     IncorrectFormat(String)
 }
 
@@ -57,9 +60,9 @@ pub trait Command {
 }
 
 #[derive(Debug, Default)]
-struct Detail {
-    id: String,
-    message: String
+pub struct Detail {
+    pub id: String,
+    pub message: String
 }
 
 #[derive(Debug, Default)]
@@ -77,9 +80,7 @@ impl Details {
     }
 
     fn push(&mut self, id: String, message: String) {
-        self.items.push(Detail{
-            id, message
-        })
+        self.items.push(Detail { id, message })
     }
 }
 
@@ -113,7 +114,7 @@ pub fn run(mut args: impl Iterator<Item = String>) -> Result<CommandResult, Erro
     let config = Config::parse_args(args)?;
 
     let cmd: Box<dyn Command> = match command.as_str() {
-        // INDEX_COMMAND_NAME => IndexCommand.run(config),
+        INDEX_COMMAND_NAME => Index::new(config),
         PUBLISH_COMMAND_NAME => Publish::new(config),
         HELP_COMMAND_NAME => Help::new(),
         _unknown => Help::new(),

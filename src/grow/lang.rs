@@ -1,5 +1,6 @@
 #![allow(clippy::must_use_candidate)]
 
+use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
@@ -28,11 +29,11 @@ impl Display for Lang {
 impl FromStr for Lang {
     type Err = String;
 
-    fn from_str(s: &str) -> Result<Self, String> {
+    fn from_str(s: &str) -> Result<Lang, String> {
         match s.trim().to_lowercase().as_str() {
             "ru" => Ok(Lang::Ru),
             "en" => Ok(Lang::En),
-            _ => Err(String::from("Unknown language")),
+            _ => Err(s.to_string())
         }
     }
 }
@@ -41,4 +42,33 @@ impl Lang {
     pub fn to_lowercase(self) -> String {
         self.to_string().to_lowercase()
     }
+}
+
+pub fn slugify(value: &str, mapping: &str) -> String {
+    let value = value.trim().to_lowercase();
+
+    if value.is_empty() {
+        return value;
+    }
+
+    let value = value.replace(' ', "-");
+
+    let mut map = HashMap::new();
+
+    for line in mapping.lines() {
+        let (char_ru, char_en) = line.split_once(';').unwrap();
+        map.insert(char_ru, char_en);
+    }
+
+    let mut slug = String::new();
+
+    for char in value.chars() {
+        let char_as_string = String::from(char);
+        let char = char_as_string.as_str();
+        slug.push_str(
+            map.get(char).unwrap_or(&char)
+        );
+    }
+
+    slug.trim().to_lowercase()
 }

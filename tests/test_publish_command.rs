@@ -2,20 +2,19 @@ mod common;
 
 #[cfg(test)]
 pub mod test_publish_command {
-    use assert_fs::prelude::{FileTouch, FileWriteStr};
+    use assert_fs::prelude::{FileWriteStr};
     use assert_fs::{NamedTempFile, TempDir};
     use chrono::Utc;
-    use std::fs;
+    use std::{fs};
     use std::path::Path;
+    use assert_fs::fixture::{PathChild, PathCreateDir};
 
-    use crate::common::BIN_NAME;
+    use crate::common::{BIN_NAME, TEST_DRAFT_PATH_ARG_KEY, TEST_DRY_RUN_ARG_KEY, TEST_POSTS_PATH_ARG_KEY,
+        TEST_TMP_DRAFT_FILE_NAME, TEST_TRANSLATIONS_PATH_ARG_KEY};
+
     use mashinka::command::PUBLISH_COMMAND_NAME;
     use mashinka::grow::lang::Lang;
     use mashinka::grow::{ISO8601_DATE_FORMAT};
-    use mashinka::{
-        TEST_DRAFT_PATH_ARG_KEY, TEST_DRY_RUN_ARG_KEY, TEST_EMPTY_CONTENT, TEST_POSTS_PATH_ARG_KEY,
-        TEST_TMP_DRAFT_FILE_NAME, TEST_TMP_TRANSLATION_FILE_NAME, TEST_TRANSLATIONS_PATH_ARG_KEY,
-    };
     use mashinka::grow::post::{DraftPost, GrowPostTranslation};
 
     pub const TEST_DRAFT_CONTENT: &str = r#"---
@@ -29,13 +28,14 @@ test_text
 "#;
 
     struct FixturedData {
-        pub posts_path: TempDir,
-        pub translation_path: NamedTempFile,
+        pub base_dir: TempDir,
         pub draft_path: NamedTempFile,
     }
 
     fn init() -> FixturedData {
-        let posts_path = TempDir::new().expect("Can't create tmp dir for posts.");
+        let tmp_dir = TempDir::new().expect("Can't create tmp dir for posts.");
+        tmp_dir.child("posts/ru").create_dir_all().unwrap();
+        tmp_dir.child("posts/en").create_dir_all().unwrap();
 
         let draft_path = NamedTempFile::new(TEST_TMP_DRAFT_FILE_NAME)
             .expect("Can't create tmp draft file.");
@@ -43,14 +43,11 @@ test_text
         draft_path.write_str(TEST_DRAFT_CONTENT)
             .expect("Can't write to tmp draft file.");
 
-        let translation_path = NamedTempFile::new(TEST_TMP_TRANSLATION_FILE_NAME).unwrap();
-
-        translation_path.touch()
-            .expect("Can't touch translation file.");
+        tmp_dir.child("translations/ru/LC_MESSAGES").create_dir_all().unwrap();
+        tmp_dir.child("translations/en/LC_MESSAGES").create_dir_all().unwrap();
 
         FixturedData {
-            posts_path,
-            translation_path,
+            base_dir: tmp_dir,
             draft_path,
         }
     }
@@ -62,22 +59,18 @@ test_text
     fn test_run_publish_command() {
         let test_data = init();
 
-        let posts_path = test_data.posts_path.path().to_str().unwrap();
+        let posts_path = test_data.base_dir.path().join("posts");
+        let posts_path = posts_path.to_str().unwrap();
+        let draft_path = test_data.draft_path.path().to_str().unwrap();
+        let translation_path = test_data.base_dir.path().join("translations");
+        let translation_path = translation_path.to_str().unwrap();
 
         let output = test_bin::get_test_bin(BIN_NAME)
             .arg(PUBLISH_COMMAND_NAME)
             .args([
-                format!(
-                    "{}={}",
-                    TEST_DRAFT_PATH_ARG_KEY,
-                    test_data.draft_path.path().to_str().unwrap()
-                ),
+                format!("{}={}", TEST_DRAFT_PATH_ARG_KEY, draft_path),
                 format!("{}={}", TEST_POSTS_PATH_ARG_KEY, posts_path),
-                format!(
-                    "{}={}",
-                    TEST_TRANSLATIONS_PATH_ARG_KEY,
-                    test_data.translation_path.path().to_str().unwrap()
-                ),
+                format!("{}={}", TEST_TRANSLATIONS_PATH_ARG_KEY, translation_path),
             ])
             .output();
 
@@ -89,10 +82,10 @@ test_text
         let now = Utc::now();
         let formatted_date = now.format(ISO8601_DATE_FORMAT).to_string();
 
-        // 2022-12-24-eto-testovyi-zagolovok@ru.md
-        let expected_post_file_name = format!("{formatted_date}-eto-testovyi-zagolovok@ru.md");
+        // 2022-12-24-eto-testoviy-zagolovok@ru.md
+        let expected_post_file_name = format!("{formatted_date}-eto-testoviy-zagolovok@ru.md");
 
-        let post_file_path = format!("{}/{}", posts_path, expected_post_file_name);
+        let post_file_path = format!("{}/{}/{}", posts_path, "ru", expected_post_file_name);
         let expected_post_file = Path::new(&post_file_path);
         dbg!(expected_post_file);
 
@@ -101,10 +94,10 @@ test_text
         // then check post content
         let post_file_content = fs::read_to_string(expected_post_file).unwrap();
 
-        let expected_draft_post = DraftPost{
-            title : "Это тестовый заголовок".to_string(),
-            description : "Тестовое описание для записи".to_string(),
-            keywords: vec!["бумага".to_string(),"А4".to_string(),"297 мм".to_string()],
+        let expected_draft_post = DraftPost {
+            title: "Это тестовый заголовок".to_string(),
+            description: "Тестовое описание для записи".to_string(),
+            keywords: vec!["бумага".to_string(), "А4".to_string(), "297 мм".to_string()],
             lang: Lang::Ru,
             text: "test_text".to_string(),
         };
@@ -115,10 +108,10 @@ test_text
         assert_eq!(grow_post.to_string(), post_file_content);
 
         // then check translations
-        let translation_file_content = fs::read_to_string(test_data.translation_path).unwrap();
+        dbg!(&translation_path);
+        let translation_file_content = fs::read_to_string(test_data.base_dir.path().join("translations/ru/LC_MESSAGES/messages.po")).unwrap();
 
-        let translation = GrowPostTranslation{
-            lang: Lang::Ru,
+        let translation = GrowPostTranslation {
             id: grow_post.slug,
             translated_value: grow_post.title,
         };
@@ -131,23 +124,19 @@ test_text
     fn test_run_publish_command_dry_run() {
         let test_data = init();
 
-        let posts_path = test_data.posts_path.path().to_str().unwrap();
+        let posts_path = test_data.base_dir.path().join("posts");
+        let posts_path = posts_path.to_str().unwrap();
+        let draft_path = test_data.draft_path.path().to_str().unwrap();
+        let translation_path = test_data.base_dir.path().join("translations");
+        let translation_path = translation_path.to_str().unwrap();
 
         let output = test_bin::get_test_bin(BIN_NAME)
             .arg(PUBLISH_COMMAND_NAME)
             .arg(TEST_DRY_RUN_ARG_KEY)
             .args([
-                format!(
-                    "{}={}",
-                    TEST_DRAFT_PATH_ARG_KEY,
-                    test_data.draft_path.path().to_str().unwrap()
-                ),
+                format!("{}={}", TEST_DRAFT_PATH_ARG_KEY, draft_path),
                 format!("{}={}", TEST_POSTS_PATH_ARG_KEY, posts_path),
-                format!(
-                    "{}={}",
-                    TEST_TRANSLATIONS_PATH_ARG_KEY,
-                    test_data.translation_path.path().to_str().unwrap()
-                ),
+                format!( "{}={}", TEST_TRANSLATIONS_PATH_ARG_KEY, translation_path),
             ])
             .output();
 
@@ -159,17 +148,18 @@ test_text
         let now = Utc::now();
         let formatted_date = now.format(ISO8601_DATE_FORMAT).to_string();
 
-        // 2022-12-24-eto-testovyi-zagolovok@ru.md
-        let expected_post_file_name = format!("{formatted_date}-eto-testovyi-zagolovok@ru.md");
+        // 2022-12-24-eto-testoviy-zagolovok@ru.md
+        let expected_post_file_name = format!("{formatted_date}-eto-testoviy-zagolovok@ru.md");
 
-        let post_file_path = format!("{}/{}", posts_path, expected_post_file_name);
+        let post_file_path = format!("{}/{}/{}", posts_path, "ru", expected_post_file_name);
         let expected_post_file = Path::new(&post_file_path);
 
         assert!(!expected_post_file.exists());
 
-        let translation_path = test_data.translation_path.path().to_str().unwrap();
-        let translation_content = fs::read_to_string(Path::new(translation_path)).unwrap();
+        let translation_file = test_data.base_dir.path().join("translations/ru/LC_MESSAGES/messages.po");
+        let translation_file = Path::new(&translation_file);
 
-        assert_eq!(TEST_EMPTY_CONTENT, translation_content);
+        assert!(!translation_file.exists());
     }
 }
+
