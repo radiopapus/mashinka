@@ -117,7 +117,7 @@ pub struct GrowPost {
 }
 
 impl GrowPost {
-    pub fn get_posts_by_lang(base_posts_path: &Path, lang: Lang) -> Result<Vec<Self>, Error> {
+    pub fn fetch_posts_by_lang(base_posts_path: &Path, lang: Lang) -> Result<Vec<Self>, Error> {
         let posts_path = fs::read_dir(
             &base_posts_path.join(lang.to_lowercase())
         ).map_err(Error::ReadDir)?;
@@ -181,7 +181,7 @@ impl GrowPostTranslation {
         Self::default()
     }
 
-    pub fn get_translations(path: &PathBuf) -> Result<Vec<GrowPostTranslation>, Error> {
+    pub fn fetch_translations(path: &PathBuf) -> Result<Vec<GrowPostTranslation>, Error> {
         let translation_content = fs::read_to_string(path).map_err(Error::ReadFile)?;
         let mut vec = Vec::new();
 

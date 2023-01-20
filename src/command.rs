@@ -137,18 +137,4 @@ mod tests {
         let mut result = run([HELP_COMMAND_NAME.to_string()].into_iter()).unwrap();
         assert_eq!(expected_command_result.summarize(), result.summarize());
     }
-
-    #[test]
-    #[should_panic]
-    #[ignore]
-    fn test_run_unknown_command() {
-        // let available_commands = available_commands().join(",");
-        // let resolved_error_message = "Unknown command {command}. \
-        // Available command are {command} or type `mashinka help` for help"
-        //     .replace("{command}", "unknown")
-        //     .replace("{command}", available_commands.as_str());
-        //
-        // run(["unknown".to_string()].into_iter())
-        //     .unwrap_or_else(|_| panic!("{}", resolved_error_message));
-    }
 }
