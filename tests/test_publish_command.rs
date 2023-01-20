@@ -102,8 +102,7 @@ test_text
             text: "test_text".to_string(),
         };
 
-        let approved = expected_draft_post.approve();
-        let grow_post = approved.to_grow_post().unwrap();
+        let grow_post = expected_draft_post.to_grow_post().unwrap();
 
         assert_eq!(grow_post.to_string(), post_file_content);
 

@@ -70,9 +70,11 @@ impl DraftPost {
         ]).into_iter().collect()
     }
 
-    /// Помечает черновик как готовый для публикации.
-    /// Технически преобразует структуру `DraftPost` в `ApprovedPost`.
-    pub fn approve(&self) -> ApprovedPost {
+    /// Публикует `Post` по путям `posts_path` (запись) и `translation_path`(перевод).
+    /// # Errors
+    ///
+    /// Вернет `Error` при записи файлов возникнут проблемы.
+    pub fn to_grow_post(&self) -> Result<GrowPost, Error> {
         // Результат "slug" состоит из символов a-z, 0-9 и '-'.
         // Никогда не содержит более одного '-' и не начинается с '-'.
         // see slugify implementation for details.
@@ -81,27 +83,18 @@ impl DraftPost {
 
         let author = if self.lang != Lang::Ru { DEFAULT_AUTHOR_EN } else { DEFAULT_AUTHOR };
 
-        ApprovedPost {
-            title: self.title.clone(),
-            author: author.to_string(),
-            slug,
-            description: self.description.clone(),
-            keywords: self.keywords.clone(),
-            lang: self.lang,
-            text: self.text.clone(),
-        }
+        Ok(GrowPostBuilder::new()
+            .title(self.title.clone())?
+            .description(self.description.clone())?
+            .author(author.to_string())?
+            .keywords(self.keywords.clone())?
+            .lang(self.lang)?
+            .published_at(Utc::now())?
+            .slug(slug)?
+            .text(self.text.clone())?
+            .build()
+        )
     }
-}
-
-#[derive(Default, Debug, PartialEq, Eq)]
-pub struct ApprovedPost {
-    pub title: String,
-    pub author: String,
-    pub description: String,
-    pub keywords: Vec<String>,
-    pub lang: Lang,
-    pub slug: String,
-    pub text: String,
 }
 
 #[derive(Debug, PartialEq, Eq, Default, Clone)]
@@ -239,28 +232,6 @@ impl GrowPost {
     }
 }
 
-impl ApprovedPost {
-    ///
-    /// Публикует `Post` по путям `posts_path` (запись) и `translation_path`(перевод).
-    /// # Errors
-    ///
-    /// Вернет `Error` при записи файлов возникнут проблемы.
-    pub fn to_grow_post(&self) -> Result<GrowPost, Error> {
-        Ok(GrowPostBuilder::new()
-            .title(self.title.clone())?
-            .description(self.description.clone())?
-            .author(self.author.clone())?
-            .keywords(self.keywords.clone())?
-            .lang(self.lang)?
-            .published_at(Utc::now())?
-            .slug(self.slug.clone())?
-            .text(self.text.clone())?
-            .build()
-        )
-    }
-}
-
-
 #[cfg(test)]
 #[allow(clippy::or_fun_call)]
 mod tests {
@@ -319,38 +290,43 @@ mod tests {
     }
 
     #[test]
-    fn test_draft_to_approved_post_conversion() {
+    fn test_draft_to_grow_post_conversion() {
         let default_draft = DraftPost {
+            title: "title".to_string(),
+            description: "описание".to_string(),
+            keywords: vec!["1".to_string(), "2".to_string()],
             text: "txt".to_string(),
             ..DraftPost::default()
         };
         let draft_post = DraftPost::deserialize(&default_draft.to_string()).unwrap();
 
-        let approved_post = draft_post.approve();
+        let grow_post = draft_post.to_grow_post().unwrap();
 
-        assert_eq!(draft_post.title, approved_post.title);
-        assert_eq!(draft_post.description, approved_post.description);
-        assert_eq!(draft_post.keywords, approved_post.keywords);
-        assert_eq!(draft_post.text, approved_post.text);
-        assert_eq!(draft_post.lang, approved_post.lang);
+        assert_eq!(draft_post.title, grow_post.title);
+        assert_eq!(draft_post.description, grow_post.description);
+        assert_eq!(draft_post.keywords, grow_post.keywords);
+        assert_eq!(draft_post.text, grow_post.text);
+        assert_eq!(draft_post.lang, grow_post.lang);
     }
 
     #[test]
-    fn test_draft_to_approved_post_conversion_with_title() {
+    fn test_draft_to_grow_post_conversion_with_title() {
         let default_draft = DraftPost {
             title: "это тестовый заголовок".to_string(),
+            description: "описание".to_string(),
+            keywords: vec!["1".to_string(), "2".to_string()],
             text: "txt".to_string(),
             ..DraftPost::default()
         };
         let draft_post = DraftPost::deserialize(&default_draft.to_string()).unwrap();
 
-        let approved_post = draft_post.approve();
+        let grow_post = draft_post.to_grow_post().unwrap();
 
-        assert_eq!(draft_post.title, approved_post.title);
-        assert_eq!(draft_post.description, approved_post.description);
-        assert_eq!(draft_post.keywords, approved_post.keywords);
-        assert_eq!(draft_post.text, approved_post.text);
-        assert_eq!(draft_post.lang, approved_post.lang);
+        assert_eq!(draft_post.title, grow_post.title);
+        assert_eq!(draft_post.description, grow_post.description);
+        assert_eq!(draft_post.keywords, grow_post.keywords);
+        assert_eq!(draft_post.text, grow_post.text);
+        assert_eq!(draft_post.lang, grow_post.lang);
     }
 
     #[test]

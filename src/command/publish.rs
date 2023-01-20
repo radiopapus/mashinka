@@ -23,16 +23,13 @@ impl Command for Publish {
         let draft_file_content = fs::read_to_string(draft_path).map_err(Error::ReadFile)?;
         let draft_post = DraftPost::deserialize(draft_file_content.as_str())?;
 
-        // Одобряем черновик
-        let approved_post = draft_post.approve();
-
         let command = PUBLISH_COMMAND_NAME.to_string();
 
         let mut details = Details::new();
 
-        // grow запись
         let posts_path = config.get_posts_path_or_default()?;
-        let grow_post = approved_post.to_grow_post()?;
+        // Одобряем черновик
+        let grow_post = draft_post.to_grow_post()?;
         let grow_post_path = grow_post.build_post_path(&posts_path);
         details.push("post_path".to_string(), format!("{:#?}", grow_post_path));
         // перевод
@@ -45,7 +42,7 @@ impl Command for Publish {
 
         if config.is_dry_run() {
             details.push("draft_post".to_string(), format!("{:#?}", draft_post));
-            details.push("post".to_string(), format!("{:#?}", approved_post));
+            details.push("post".to_string(), format!("{:#?}", grow_post));
             return Ok(CommandResult { command, details });
         }
 
