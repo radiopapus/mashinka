@@ -18,7 +18,7 @@ pub mod test_publish_command {
     use mashinka::grow::post::{DraftPost, GrowPostTranslation};
 
     pub const TEST_DRAFT_CONTENT: &str = r#"---
-title: Это тестовый заголовок
+title: Это тестовый заголовок. Проверка
 lang: ru
 description: Тестовое описание для записи
 keywords: бумага,А4,297 мм
@@ -82,8 +82,8 @@ test_text
         let now = Utc::now();
         let formatted_date = now.format(ISO8601_DATE_FORMAT).to_string();
 
-        // 2022-12-24-eto-testoviy-zagolovok@ru.md
-        let expected_post_file_name = format!("{formatted_date}-eto-testoviy-zagolovok@ru.md");
+        // 2022-12-24-eto-testoviy-zagolovok-proverka@ru.md
+        let expected_post_file_name = format!("{formatted_date}-eto-testoviy-zagolovok-proverka@ru.md");
 
         let post_file_path = format!("{}/{}/{}", posts_path, "ru", expected_post_file_name);
         let expected_post_file = Path::new(&post_file_path);
@@ -95,15 +95,14 @@ test_text
         let post_file_content = fs::read_to_string(expected_post_file).unwrap();
 
         let expected_draft_post = DraftPost {
-            title: "Это тестовый заголовок".to_string(),
+            title: "Это тестовый заголовок. Проверка".to_string(),
             description: "Тестовое описание для записи".to_string(),
             keywords: vec!["бумага".to_string(), "А4".to_string(), "297 мм".to_string()],
             lang: Lang::Ru,
             text: "test_text".to_string(),
         };
 
-        let approved = expected_draft_post.approve();
-        let grow_post = approved.to_grow_post().unwrap();
+        let grow_post = expected_draft_post.to_grow_post().unwrap();
 
         assert_eq!(grow_post.to_string(), post_file_content);
 
