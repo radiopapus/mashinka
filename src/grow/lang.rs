@@ -47,11 +47,10 @@ impl Lang {
 pub fn slugify(value: &str, mapping: &str) -> String {
     let value = value.trim().to_lowercase();
 
-    if value.is_empty() {
-        return value;
-    }
-
-    let value = value.replace(' ', "-");
+    let value = value.replace([' ', '.'], "-")
+        .replace("--", "-")
+        .trim_matches('-')
+        .to_string();
 
     let mut map = HashMap::new();
 
