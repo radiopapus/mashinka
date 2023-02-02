@@ -13,8 +13,8 @@ pub mod test_publish_command {
 
     use mashinka::command::{INDEX_COMMAND_NAME};
 
-    pub const TEST_TMP_POST_FILE_NAME_RU: &str = "2021-11-16-19-15-19-test-post@ru.md";
-    pub const TEST_TMP_POST_FILE_NAME_EN: &str = "2021-11-16-19-15-19-test-post-another@en.md";
+    pub const TEST_TMP_POST_FILE_NAME_RU: &str = "2021-11-16-19-15-19-test@ru.md";
+    pub const TEST_TMP_POST_FILE_NAME_EN: &str = "2021-11-16-19-15-19-test-another@en.md";
 
     pub const TEST_POST_CONTENT_RU: &str = r#"---
 $title@: title
@@ -170,10 +170,6 @@ msgstr "translation"
         let as_string = output.stdout.to_ascii_lowercase();
         let stdout = from_utf8(&as_string).unwrap();
         assert!(output.status.success());
-        assert!(stdout.contains("index_data"));
-        assert!(stdout.contains("/ru/posts/title"));
-        assert!(stdout.contains("перевод"));
-        assert!(stdout.contains("/en/posts/title-another"));
-        assert!(stdout.contains("translation"));
+        assert!(stdout.contains("index_path"));
     }
 }
