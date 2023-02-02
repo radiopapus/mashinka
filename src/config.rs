@@ -21,6 +21,20 @@ impl Default for Config {
     }
 }
 
+pub struct DeployConfig {
+    pub account_id: String,
+    pub username: String,
+    pub password: String,
+    pub container_id: String,
+    pub destination: String,
+}
+
+impl ToString for DeployConfig {
+    fn to_string(&self) -> String {
+        unimplemented!("DeployConfig contains sensitive data!")
+    }
+}
+
 //todo WHY fn in Config is not static?
 impl Config {
     pub fn available_languages(&self) -> Vec<Lang> {
@@ -134,5 +148,41 @@ impl Config {
             .unwrap_or(&default_path);
 
         Ok(PathBuf::from(&resolved_path))
+    }
+
+    /// Возвращает путь до директории, в которой лежат подготовленные для выгрузки данные.
+    /// Если задан параметр --build-path, то использует его, иначе берет значение из
+    /// переменной окружения `ABS_BUILD_PATH`.
+    /// # Errors
+    ///
+    /// Вернет Error если переменная окружения `ABS_BUILD_PATH` не задана или имеет нулевую длину.
+    pub fn get_build_path_or_default(&self) -> Result<PathBuf, Error> {
+        let default_path = env::var("ABS_BUILD_PATH")?;
+
+        if default_path.is_empty() {
+            return Err(Error::EmptyValue(String::from("ABS_BUILD_PATH")));
+        }
+
+        let resolved_path = self.args_map.get("--build-path")
+            .unwrap_or(&default_path);
+
+        Ok(PathBuf::from(&resolved_path))
+    }
+
+    /// Возвращает Deploy config, который содержит реквизиты для доступа к облачному хранилищу и выполнения деплоя.
+    pub fn get_deploy_config(&self) -> Result<DeployConfig, Error> {
+        let account_id = env::var("DEPLOY_ACCOUNT")?;
+        let username = env::var("DEPLOY_USERNAME")?;
+        let password = env::var("DEPLOY_PASSWORD")?;
+        let container_id = env::var("DEPLOY_CONTAINER")?;
+        let destination = env::var("DEPLOY_DEST")?;
+
+        if account_id.is_empty() || username.is_empty() || password.is_empty() || container_id.is_empty() || destination.is_empty() {
+            return Err(
+                Error::EmptyValue("Check deploy vars: DEPLOY_ACCOUNT, DEPLOY_USERNAME, DEPLOY_PASSWORD, DEPLOY_CONTAINER, DEPLOY_DEST".to_string())
+            );
+        }
+
+        Ok(DeployConfig{ account_id, username, password, container_id, destination })
     }
 }

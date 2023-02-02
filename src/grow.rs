@@ -13,6 +13,8 @@ pub const KEYWORDS_FIELD_NAME: &str = "keywords";
 pub const AUTHOR_FIELD_NAME: &str = "author";
 pub const IMAGE_FIELD_NAME: &str = "image";
 pub const SLUG_FIELD_NAME: &str = "slug";
+pub const SLUG_FIELD_NAME_RU: &str = "slugRu";
+pub const SLUG_FIELD_NAME_EN: &str = "slugEn";
 pub const PUBLISHED_DATE_FIELD_NAME: &str = "published";
 
 pub const TRANSLATION_ID_FIELD: &str = "msgid";
