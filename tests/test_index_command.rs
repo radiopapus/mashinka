@@ -21,9 +21,8 @@ $title@: title
 author@: автор
 description: описание
 keywords: слово, другое
-$order: 332
 image: /static/images/default.png
-slugEn: slug-en
+slugRu: title
 $dates:
   published: 2021-11-16 19:16:00
 ---
@@ -36,9 +35,8 @@ $title@: title-another
 author@: author
 description: description
 keywords: k1,k2
-$order: 331
 image: /static/images/default.png
-slugEn: title
+slugEn: title-another
 $dates:
   published: 2021-11-16 19:15:19
 ---

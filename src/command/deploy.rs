@@ -60,13 +60,13 @@ fn upload_and_extract(archive: &PathBuf, deploy_config: &DeployConfig, token: &s
     Ok(())
 }
 
-/// Выгружает данные в облачное хранилище
-/// // архивировать build в tar.gz
-/// получить токен от облачного хранилища
-/// сгенерить запрос к API, прикрепить архив tar.gz, указать флаг на распаковку данных после выгрузки
+/// Выгружает данные в облачное хранилище.
+/// Архивировать build в tar.gz;
+/// Получить токен от облачного хранилища;
+/// Сгенерить запрос к API, прикрепить архив tar.gz, указать флаг на распаковку данных после выгрузки;
 /// curl -i -XPUT  https://api.selcdn.ru/v1/SEL_*****/new_container/archive.tar.gz/?extract-archive=tar.gz \
 /// -H "X-Auth-Token: $token" -T "archive.tar.gz"
-/// сделать запрос на главную и вывести на экран или в открыть в браузере
+/// Отправить запрос на главную и вывести на экран или в открыть в браузере.
 impl Command for Deploy {
     fn run(&self) -> Result<CommandResult, Error> {
         let config = &self.config;
