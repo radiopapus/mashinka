@@ -103,7 +103,7 @@ impl Command for Index {
         let mut details = Details::new();
 
         let as_json_list = format!(r#"[{}]"#, index_content_items.join(","));
-        details.push("index_data".to_string(), as_json_list.clone());
+        details.push(String::from("index_path"), index_path.to_string_lossy().to_string());
 
         let command = String::from(INDEX_COMMAND_NAME);
 
