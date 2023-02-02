@@ -6,12 +6,10 @@ use std::collections::HashMap;
 use std::str::FromStr;
 use crate::command::Error;
 use crate::grow::builder::{BasePostBuilder};
-use crate::grow::lang::Lang;
-use crate::grow::{
-    KEY_VALUE_DELIMITER, KEYWORDS_DELIMITER, LF, META_DELIMITER, TEXT_FIELD_NAME,
-    TITLE_FIELD_NAME, DESCRIPTION_FIELD_NAME, KEYWORDS_FIELD_NAME, LANGUAGE_FIELD_NAME, AUTHOR_FIELD_NAME,
-    SLUG_FIELD_NAME, PUBLISHED_DATE_FIELD_NAME, IMAGE_FIELD_NAME
-};
+use crate::grow::lang::{Lang};
+use crate::grow::{KEY_VALUE_DELIMITER, KEYWORDS_DELIMITER, LF, META_DELIMITER, TEXT_FIELD_NAME, TITLE_FIELD_NAME,
+    DESCRIPTION_FIELD_NAME, KEYWORDS_FIELD_NAME, LANGUAGE_FIELD_NAME, AUTHOR_FIELD_NAME, SLUG_FIELD_NAME_RU,
+    SLUG_FIELD_NAME_EN, PUBLISHED_DATE_FIELD_NAME, IMAGE_FIELD_NAME};
 
 pub trait GrowDeserializer<T> {
     fn deserialize(source: &str) -> Result<T, Error>;
@@ -98,15 +96,15 @@ impl GrowDeserializer<GrowPost> for GrowPost {
         for (parameter_name, parameter_value) in map {
             match parameter_name.as_str() {
                 AUTHOR_FIELD_NAME => builder.author(parameter_value)?,
-                SLUG_FIELD_NAME => builder.slug(parameter_value)?,
+                SLUG_FIELD_NAME_RU | SLUG_FIELD_NAME_EN => builder.slug(parameter_value)?,
                 PUBLISHED_DATE_FIELD_NAME => builder.published_at_str(parameter_value)?,
                 IMAGE_FIELD_NAME => builder.image(parameter_value)?,
-                TITLE_FIELD_NAME => builder.slug(parameter_value)?, // todo fetch title from translation. grow record does not contain title actually or investigate?
+                // todo fetch title from translation. grow record does not contain title actually or investigate?
+                TITLE_FIELD_NAME => builder.title(parameter_value.clone())?,
                 DESCRIPTION_FIELD_NAME => builder.description(parameter_value)?,
                 KEYWORDS_FIELD_NAME => builder.keywords_as_str(parameter_value, KEYWORDS_DELIMITER)?,
                 TEXT_FIELD_NAME => builder.text(parameter_value)?,
                 LANGUAGE_FIELD_NAME => builder.lang(Lang::from_str(&parameter_value).map_err(Error::UnknownLang)?)?,
-                "order" | "slugRu" | "slugEn" => continue,
                 key => return Err(Error::UnknownKey(key.to_string())),
             };
         }

@@ -7,15 +7,18 @@ use crate::config::Config;
 use std::{env};
 use chrono::ParseError;
 use thiserror::Error;
+use crate::command::deploy::Deploy;
 use crate::command::index::Index;
 
 pub mod help;
 pub mod index;
 pub mod publish;
+pub mod deploy;
 
 pub const INDEX_COMMAND_NAME: &str = "index";
 pub const PUBLISH_COMMAND_NAME: &str = "publish";
 pub const HELP_COMMAND_NAME: &str = "help";
+pub const DEPLOY_COMMAND_NAME: &str = "deploy";
 
 /// Список ошибок
 #[derive(Error, Debug)]
@@ -36,6 +39,12 @@ pub enum Error {
     UnknownKey(String),
     #[error("Have no clue how to process {0} language value")]
     UnknownLang(String),
+    #[error("Can't create file {0:?}")]
+    CreateFile(std::io::Error),
+    #[error("Can't create archive {0:?}")]
+    CreateArchive(std::io::Error),
+    #[error("Error deploy api archive {0:?}")]
+    DeployApi(String),
     #[error("Can't read file {0:?}")]
     ReadFile(std::io::Error),
     #[error("Can't write file {0:?}")]
@@ -117,6 +126,7 @@ pub fn run(mut args: impl Iterator<Item = String>) -> Result<CommandResult, Erro
         INDEX_COMMAND_NAME => Index::new(config),
         PUBLISH_COMMAND_NAME => Publish::new(config),
         HELP_COMMAND_NAME => Help::new(),
+        DEPLOY_COMMAND_NAME => Deploy::new(config),
         _unknown => Help::new(),
     };
 

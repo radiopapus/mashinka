@@ -1,3 +1,5 @@
+extern crate core;
+
 mod command;
 mod config;
 mod grow;
