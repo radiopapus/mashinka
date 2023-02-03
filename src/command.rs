@@ -5,20 +5,24 @@ use crate::command::help::Help;
 use crate::command::publish::Publish;
 use crate::config::Config;
 use std::{env};
+use std::fmt::{Display, Formatter};
 use chrono::ParseError;
 use thiserror::Error;
 use crate::command::deploy::Deploy;
 use crate::command::index::Index;
+use crate::command::version::Version;
 
 pub mod help;
 pub mod index;
 pub mod publish;
 pub mod deploy;
+pub mod version;
 
 pub const INDEX_COMMAND_NAME: &str = "index";
 pub const PUBLISH_COMMAND_NAME: &str = "publish";
 pub const HELP_COMMAND_NAME: &str = "help";
 pub const DEPLOY_COMMAND_NAME: &str = "deploy";
+pub const VERSION_COMMAND_NAME: &str = "version";
 
 /// Список ошибок
 #[derive(Error, Debug)]
@@ -32,7 +36,7 @@ pub enum Error {
     EmptyValue(String),
     #[error("Value for {0} is too long, example: {1}. Expected less than {2}")]
     ValueTooLong(String, String, usize),
-    #[error("Env variable error")]
+    #[error("Env variable {0:?}")]
     EnvVar(#[from] env::VarError),
     // deserializer
     #[error("Have no clue how process about {0} key")]
@@ -62,6 +66,8 @@ impl PartialEq for Error {
 }
 
 pub trait Command {
+    /// Выполняет команду
+    ///
     /// # Errors
     ///
     /// Вернет Error при выполнении команды
@@ -84,12 +90,21 @@ impl Details {
         Self::default()
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.items.is_empty()
-    }
-
     fn push(&mut self, id: String, message: String) {
         self.items.push(Detail { id, message })
+    }
+}
+
+impl Display for Details {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        if self.items.is_empty() { return write!(f, "") }
+
+        let msg: String = self.items.iter().map(|d| {
+            if d.id.is_empty() { d.message.to_string() }
+            else { format!("{}:{}", d.id, d.message) }
+        }).collect();
+
+        write!(f, "{}", msg)
     }
 }
 
@@ -101,13 +116,8 @@ pub struct CommandResult {
 
 impl CommandResult {
     pub fn summarize(&mut self) -> String {
-        let details = if self.details.is_empty() {
-            String::new()
-        } else {
-            format!("Details: {:#?}", self.details)
-        };
-
-        format!("Command `{}` successfully completed. {}", self.command, details)
+        if self.command.is_empty() { return format!("{}", self.details) }
+        format!("Command `{}` successfully completed. {}", self.command, self.details)
     }
 }
 
@@ -126,6 +136,7 @@ pub fn run(mut args: impl Iterator<Item = String>) -> Result<CommandResult, Erro
         INDEX_COMMAND_NAME => Index::new(config),
         PUBLISH_COMMAND_NAME => Publish::new(config),
         HELP_COMMAND_NAME => Help::new(),
+        VERSION_COMMAND_NAME => Version::new(),
         DEPLOY_COMMAND_NAME => Deploy::new(config),
         _unknown => Help::new(),
     };
