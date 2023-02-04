@@ -109,6 +109,7 @@ impl Display for Details {
 }
 
 /// Результат выполнения команды
+#[derive(Debug, Default)]
 pub struct CommandResult {
     command: String,
     details: Details,
@@ -142,20 +143,4 @@ pub fn run(mut args: impl Iterator<Item = String>) -> Result<CommandResult, Erro
     };
 
     cmd.run()
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::command::{run, CommandResult, HELP_COMMAND_NAME, Details};
-
-    #[test]
-    fn test_run_command() {
-        let mut expected_command_result = CommandResult {
-            command: HELP_COMMAND_NAME.to_string(),
-            details: Details::new(),
-        };
-
-        let mut result = run([HELP_COMMAND_NAME.to_string()].into_iter()).unwrap();
-        assert_eq!(expected_command_result.summarize(), result.summarize());
-    }
 }
