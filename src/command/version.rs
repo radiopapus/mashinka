@@ -1,6 +1,6 @@
 #![allow(clippy::must_use_candidate)]
 
-use crate::command::{Command, CommandResult, Details, Error};
+use crate::command::{Command, CommandResult, Error};
 use crate::config::VERSION;
 
 pub struct Version;
@@ -14,11 +14,7 @@ impl Version {
 /// Выводит версию утилиты
 impl Command for Version {
     fn run(&self) -> Result<CommandResult, Error> {
-        let command = String::new();
-
-        let mut details = Details::new();
-        details.push(String::from(""), VERSION.to_string());
-
-        Ok(CommandResult { command, details })
+        println!("{}", VERSION);
+        Ok(CommandResult::default())
     }
 }
