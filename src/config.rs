@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use std::env;
 use std::path::PathBuf;
 
-pub const VERSION: &str = "0.1.3";
+pub const VERSION: &str = "0.1.4";
 
 pub const PARAMETER_KEY_VALUE_DELIMITER: &str = "=";
 pub const PARAMETER_PREFIX: &str = "--";
