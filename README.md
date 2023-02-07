@@ -5,7 +5,7 @@
  ██  ██  ██ ██   ██      ██ ██   ██ ██ ██  ██ ██ ██  ██  ██   ██
  ██      ██ ██   ██ ███████ ██   ██ ██ ██   ████ ██   ██ ██   ██
 ```                                                             
-<a alt="twitch" href="twitch.tv/radiopapus"><img src="https://upload.wikimedia.org/wikipedia/commons/3/3a/Twitch_mit_Glitch.png" alt="twitch" height="32"/></a>
+<a alt="twitch" href="http://twitch.tv/radiopapus"><img src="https://upload.wikimedia.org/wikipedia/commons/3/3a/Twitch_mit_Glitch.png" alt="twitch" height="32"/></a>
 [![telegram](https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Telegram_2019_simple_logo.svg/32px-Telegram_2019_simple_logo.svg.png)](https://t.me/radiopapus)
 <a alt="youtube" href="https://www.youtube.com/@radiopapus"><img src="https://upload.wikimedia.org/wikipedia/commons/9/98/YouTube_Play_Button_Free.png" alt="youtube" height="32"/></a>
 <a alt="VK" href="https://vk.com/radiopapus"><img src="https://upload.wikimedia.org/wikipedia/commons/4/47/V_Kontakte_Russian_V.png" alt="VK" height="32"/></a>
