@@ -5,6 +5,7 @@ use crate::command::Error;
 use crate::grow::lang::Lang;
 use std::collections::HashMap;
 use std::env;
+use std::env::Args;
 use std::path::PathBuf;
 
 pub const VERSION: &str = "0.1.4";
@@ -47,7 +48,7 @@ impl Config {
     ///
     /// Вернет `Error` если при парсинге входных параметров ключи имеют неверный формат.
     /// Они должны иметь формат --key-name или --key-name=value.
-    pub fn parse_args(args: impl Iterator<Item = String>) -> Result<Self, Error> {
+    pub fn from_args(args: Args) -> Result<Self, Error> {
         let mut args_map = HashMap::new();
         for param in args {
             if param.contains(PARAMETER_KEY_VALUE_DELIMITER) {

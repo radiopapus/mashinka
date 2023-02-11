@@ -8,10 +8,8 @@ use colored::Colorize;
 
 use crate::command::run;
 
-use dotenv::dotenv;
-
 fn main() {
-    if dotenv::from_filename("~/.env").is_err() {
+    if dotenv::dotenv().is_err() && dotenv::from_filename("~/.env").is_err() {
         println!("{}", "Consider to place env variables to ~/.env file".yellow());
     }
 
@@ -22,7 +20,7 @@ fn main() {
 
     match result {
         Err(e) => {
-            eprintln!("{}{e}", "Mashinka error:".red());
+            eprintln!("{} {e}", "Mashinka error:".red());
             process::exit(1);
         }
         Ok(mut result) => {
