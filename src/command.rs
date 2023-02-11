@@ -5,6 +5,7 @@ use crate::command::help::Help;
 use crate::command::publish::Publish;
 use crate::config::Config;
 use std::{env};
+use std::env::Args;
 use std::fmt::{Display, Formatter};
 use chrono::ParseError;
 use thiserror::Error;
@@ -66,11 +67,6 @@ impl PartialEq for Error {
 }
 
 pub trait Command {
-    /// Выполняет команду
-    ///
-    /// # Errors
-    ///
-    /// Вернет Error при выполнении команды
     fn run(&self) -> Result<CommandResult, Error>;
 }
 
@@ -125,13 +121,13 @@ impl CommandResult {
 /// # Errors
 ///
 /// Вернет Error при выполнении команды и парсинге конфигурации.
-pub fn run(mut args: impl Iterator<Item = String>) -> Result<CommandResult, Error> {
+pub fn run(mut args: Args) -> Result<CommandResult, Error> {
     let command = match args.next() {
         Some(v) => v,
         None => String::from(HELP_COMMAND_NAME),
     };
 
-    let config = Config::parse_args(args)?;
+    let config = Config::from_args(args)?;
 
     let cmd: Box<dyn Command> = match command.as_str() {
         INDEX_COMMAND_NAME => Index::new(config),

@@ -4,15 +4,13 @@ mod grow;
 
 use std::env::Args;
 use std::{env, process};
+use colored::Colorize;
 
 use crate::command::run;
 
-use dotenv::dotenv;
-
 fn main() {
-    if dotenv().is_err() {
-        eprintln!("Check file .env exists. See .env-example for details.");
-        process::exit(1);
+    if dotenv::dotenv().is_err() && dotenv::from_filename("~/.env").is_err() {
+        println!("{}", "Consider to place env variables to ~/.env file".yellow());
     }
 
     let mut args: Args = env::args();
@@ -22,7 +20,7 @@ fn main() {
 
     match result {
         Err(e) => {
-            eprintln!("Mashinka error: {e}");
+            eprintln!("{} {e}", "Mashinka error:".red());
             process::exit(1);
         }
         Ok(mut result) => {
